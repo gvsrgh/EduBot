@@ -1,0 +1,70 @@
+[Fees & Payments]
+- Tuition fees are paid via the University Student Portal. Accepted payment methods include credit/debit card and bank transfer.
+- Payment Deadlines: Fall semester fees are due by September 15; Spring semester fees are due by February 1.
+- Late Payments: A 5% late fee is applied after the deadline. Students who miss the deadline must coordinate with the Bursar's Office to complete payment.
+- Payment Portal Access: Students can log in to the Student Portal at https://portal.university.edu using their student ID and password.
+- Refund Policy: Refund requests must be submitted within 30 days of payment. A processing fee of $50 applies to all refunds.
+- Payment Plans: Students experiencing financial difficulty can apply for a payment plan through the Bursar's Office. Payment plans allow splitting tuition into 3-4 monthly installments.
+
+[Academic Programs]
+- The Computer Science department offers a course on Database Systems where students learn SQL (Structured Query Language) for managing relational databases.
+- The Database Systems course covers SQL fundamentals including SELECT queries, JOIN operations, aggregate functions, and transaction management.
+- The university uses PostgreSQL as its primary database system for student records, course management, and administrative operations.
+- Students can access SQL training resources through the library's online learning platform.
+- Advanced courses include Distributed Databases, Big Data Analytics, and Cloud Computing with Database Integration.
+
+[Admissions]
+- Application Deadline: Applications for Fall semester admission must be submitted by March 1; Spring semester by October 1.
+- Required Documents: Official transcripts, standardized test scores (SAT/ACT), two letters of recommendation, and personal statement.
+- Application Fee: $75 (non-refundable). Fee waivers available for eligible applicants based on financial need.
+- International Students: Must provide proof of English proficiency (TOEFL/IELTS) and financial documentation.
+- Transfer Students: Must have a minimum GPA of 2.5 from previous institution. Maximum 60 credits can be transferred.
+
+[Student Services]
+- Health Services: On-campus health center provides medical care, counseling, and wellness programs. Services are included in student fees.
+- Library Services: Main library open 24/7 during academic year. Offers study rooms, computer labs, and research assistance.
+- Career Center: Provides career counseling, resume reviews, mock interviews, and job placement assistance.
+- Disability Services: Accommodations available for students with documented disabilities. Contact the Office of Accessibility Services.
+- Housing: On-campus dormitories and apartments available. Housing application opens March 1 for Fall semester.
+
+[Technical Support]
+- IT Help Desk: Available Monday-Friday, 8 AM - 5 PM. Contact: helpdesk@university.edu or call 123-456-7891.
+- Student Portal Issues: For login problems, password resets, or technical issues with the portal, contact IT Help Desk.
+- Email Services: All students receive a university email account (@university.edu) which must be used for official communication.
+- Wi-Fi Access: Campus-wide Wi-Fi available. Connect using your student ID credentials. Network name: UniversityWiFi.
+- Software Licenses: Students have free access to Microsoft Office, Adobe Creative Suite, and various programming IDEs through the university license.
+
+[Academic Policies]
+- Attendance Policy: Students must attend at least 75% of classes to be eligible for final exams.
+- Grading Scale: A (90-100), B (80-89), C (70-79), D (60-69), F (below 60).
+- Academic Probation: Students with GPA below 2.0 are placed on academic probation and must meet with an advisor.
+- Withdrawal Policy: Students can withdraw from courses until the 10th week of semester without academic penalty.
+- Grade Appeals: Must be filed within 30 days of grade posting. Contact the Office of the Registrar.
+
+[Contact Information]
+- Bursar's Office: bursar@university.edu, Phone: 123-456-7890
+- Office Hours: Monday-Friday, 9 AM - 4 PM
+- Admissions Office: admissions@university.edu, Phone: 123-456-7892
+- Registrar's Office: registrar@university.edu, Phone: 123-456-7893
+- Student Affairs: studentaffairs@university.edu, Phone: 123-456-7894
+- Campus Security: security@university.edu, Emergency: 911, Non-Emergency: 123-456-7895
+
+[Campus Facilities]
+- Main Library: Located in the center of campus, 5 floors with over 500,000 volumes.
+- Recreation Center: Gym, swimming pool, basketball courts, and fitness classes. Open daily 6 AM - 11 PM.
+- Dining Halls: Four dining halls across campus offering various meal plans. Meal plans required for students living on campus.
+- Student Center: Houses student organizations, meeting rooms, game rooms, and food court.
+- Parking: Student parking permits available for $200 per semester. Limited visitor parking in designated lots.
+
+[Research Opportunities]
+- Undergraduate Research: Students can participate in faculty-led research projects for academic credit.
+- Summer Research Program: Paid research positions available during summer semester. Application deadline: February 15.
+- Research Symposium: Annual event where students present research findings. Held every April.
+- Grants: Research grants available for student projects up to $2,000. Apply through the Office of Research.
+
+[Financial Aid]
+- FAFSA Deadline: Submit Free Application for Federal Student Aid (FAFSA) by April 15 for Fall semester.
+- Scholarships: Merit-based and need-based scholarships available. Automatic consideration with admission application.
+- Work-Study: Federal work-study positions available on campus. Apply through Financial Aid Office.
+- Emergency Funds: Short-term emergency loans available for students facing unexpected financial hardship.
+- Scholarship Database: Access searchable scholarship database at portal.university.edu/scholarships

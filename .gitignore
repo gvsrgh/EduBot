@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+*.pyc
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+.vercel
+
+# Environment variables
+.env
+.env*.local
+!.env.example
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+edubot.db
+
+# Ollama models (too large for git)
+.ollama/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Docker volumes
+docker-data/
+
+# Test files
+test_*.py
+*_test.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-*
+
+# Testing
+coverage/
+.pytest_cache/
+.coverage
+
+# Build outputs
+build/
+dist/
+*.egg-info/
