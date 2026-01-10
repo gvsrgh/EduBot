@@ -1,4 +1,4 @@
-# EduBot Backend - Python FastAPI with LangGraph
+# EduBot+ Backend - Python FastAPI with LangGraph
 FROM python:3.11-slim
 
 # Set working directory

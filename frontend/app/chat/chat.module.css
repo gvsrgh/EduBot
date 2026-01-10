@@ -2,54 +2,73 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-gradient);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.1);
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: var(--bg-card);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .header h1 {
   margin: 0;
-  color: white;
+  color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 600;
 }
 
+.username {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
 .headerButtons {
   display: flex;
-  gap: 1rem;
+  gap: var(--spacing-md);
 }
 
 .clearBtn,
+.settingsBtn,
 .logoutBtn {
-  padding: 0.5rem 1rem;
+  padding: var(--spacing-sm) var(--spacing-md);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all var(--transition-base);
 }
 
 .clearBtn {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
 }
 
 .clearBtn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--bg-hover);
+}
+
+.settingsBtn {
+  background: var(--accent-color);
+  color: var(--text-primary);
+}
+
+.settingsBtn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
 }
 
 .logoutBtn {
   background: rgba(255, 59, 48, 0.8);
-  color: white;
+  color: var(--text-primary);
 }
 
 .logoutBtn:hover {

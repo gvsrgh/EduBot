@@ -2,12 +2,14 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 export default function Home() {
   const router = useRouter();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    // Redirect directly to chat page
+    // Always redirect to chat regardless of auth status
     router.push('/chat');
   }, [router]);
 

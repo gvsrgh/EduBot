@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { apiClient } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import styles from './chat.module.css';
 
 interface Message {
@@ -17,6 +18,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -24,13 +26,20 @@ export default function ChatPage() {
   }, [messages]);
 
   const handleLogout = () => {
-    // Skip logout functionality for now
-    handleClear();
+    logout();
+  };
+
+  const handleLogin = () => {
+    router.push('/login');
   };
 
   const handleClear = () => {
     setMessages([]);
     setChatId(null);
+  };
+
+  const handleSettings = () => {
+    router.push('/settings');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -68,14 +77,28 @@ export default function ChatPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>🎓 EduBot</h1>
+        <div>
+          <h1>🎓 EduBot+</h1>
+          <span className={styles.username}>Welcome, {user ? user.username : 'Guest'}</span>
+        </div>
         <div className={styles.headerButtons}>
           <button onClick={handleClear} className={styles.clearBtn}>
             Clear
           </button>
-          <button onClick={handleLogout} className={styles.logoutBtn}>
-            Logout
-          </button>
+          {user && (
+            <button onClick={handleSettings} className={styles.settingsBtn}>
+              ⚙️ Settings
+            </button>
+          )}
+          {user ? (
+            <button onClick={handleLogout} className={styles.logoutBtn}>
+              Logout
+            </button>
+          ) : (
+            <button onClick={handleLogin} className={styles.logoutBtn}>
+              Login
+            </button>
+          )}
         </div>
       </header>
 
@@ -83,7 +106,7 @@ export default function ChatPage() {
         <div className={styles.messages}>
           {messages.length === 0 && (
             <div className={styles.welcome}>
-              <h2>Welcome to EduBot! 👋</h2>
+              <h2>Welcome to EduBot+! 👋</h2>
               <p>Ask me anything about the university:</p>
               <ul>
                 <li>How can I pay my tuition fees?</li>

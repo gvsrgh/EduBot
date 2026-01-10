@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 
 
 # Auth Schemas
@@ -11,7 +12,7 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    username: str
+    email: EmailStr
     password: str
 
 
@@ -22,6 +23,13 @@ class UserResponse(BaseModel):
     is_active: bool
     is_admin: bool
     created_at: datetime
+    
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return v
     
     class Config:
         from_attributes = True

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc
@@ -11,11 +11,25 @@ from app.db.models import Chat, Message
 from app.schemas import MessageCreate, ChatResponse, MessageResponse, ChatWithMessages, ChatRename
 from app.auth import get_current_user
 from app.graph import create_agent_graph
+from app.llm_provider import llm_provider
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 # Initialize agent graph
 agent_graph = create_agent_graph()
+
+
+def set_user_api_keys(
+    x_openai_key: Optional[str] = Header(None),
+    x_gemini_key: Optional[str] = Header(None),
+    x_ollama_url: Optional[str] = Header(None)
+):
+    """Extract and set API keys from request headers."""
+    llm_provider.set_api_keys(
+        openai_key=x_openai_key,
+        gemini_key=x_gemini_key,
+        ollama_url=x_ollama_url
+    )
 
 
 @router.post("/message")
@@ -87,6 +101,7 @@ async def send_message(
     message_data: MessageCreate,
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    api_keys: None = Depends(set_user_api_keys)
 ):
     """Send a message and get response (non-streaming)."""
     
@@ -151,6 +166,7 @@ async def send_message_stream(
     message_data: MessageCreate,
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    api_keys: None = Depends(set_user_api_keys)
 ):
     """Send a message and get streaming response."""
     

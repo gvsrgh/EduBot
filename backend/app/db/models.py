@@ -67,7 +67,7 @@ class Setting(Base):
     __tablename__ = "settings"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    ai_provider = Column(String(50), default="openai")  # openai, gemini, ollama, auto
+    ai_provider = Column(String(50), default="ollama")  # openai, gemini, ollama, auto
     deny_words = Column(Text, default="")  # Comma-separated list of blocked words
     max_tokens = Column(Integer, default=2000)
     temperature = Column(String(10), default="0.7")

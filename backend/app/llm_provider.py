@@ -17,11 +17,8 @@ from langchain_ollama import ChatOllama
 from langchain_core.language_models.chat_models import BaseChatModel
 from app.config import (
     AI_PROVIDER,
-    OPENAI_API_KEY,
     OPENAI_MODEL,
-    GOOGLE_API_KEY,
     GEMINI_MODEL,
-    OLLAMA_BASE_URL,
     OLLAMA_MODEL,
 )
 
@@ -33,6 +30,24 @@ class LLMProvider:
     
     def __init__(self):
         self.current_provider: str = AI_PROVIDER
+        self._api_keys = {
+            'openai': None,
+            'gemini': None,
+            'ollama_url': 'http://localhost:11434'
+        }
+    
+    def set_api_keys(self, openai_key: str = None, gemini_key: str = None, ollama_url: str = None):
+        """Set API keys dynamically from user settings."""
+        if openai_key:
+            self._api_keys['openai'] = openai_key
+        if gemini_key:
+            self._api_keys['gemini'] = gemini_key
+        if ollama_url:
+            self._api_keys['ollama_url'] = ollama_url
+    
+    def get_api_keys(self) -> dict:
+        """Get current API keys."""
+        return self._api_keys.copy()
         
     def get_llm(
         self,
@@ -72,57 +87,76 @@ class LLMProvider:
     
     def _get_openai(self, temperature: float, max_retries: int) -> ChatOpenAI:
         """Get OpenAI GPT-4 model."""
-        if not OPENAI_API_KEY:
+        api_key = self._api_keys.get('openai') or os.getenv('OPENAI_API_KEY')
+        if not api_key:
             raise ValueError("OPENAI_API_KEY not configured")
         
         return ChatOpenAI(
             model=OPENAI_MODEL,
             temperature=temperature,
             max_retries=max_retries,
-            openai_api_key=OPENAI_API_KEY,
+            openai_api_key=api_key,
         )
     
     def _get_gemini(self, temperature: float, max_retries: int) -> ChatGoogleGenerativeAI:
         """Get Google Gemini model."""
-        if not GOOGLE_API_KEY:
+        api_key = self._api_keys.get('gemini') or os.getenv('GOOGLE_API_KEY')
+        if not api_key:
             raise ValueError("GOOGLE_API_KEY not configured")
         
         return ChatGoogleGenerativeAI(
             model=GEMINI_MODEL,
             temperature=temperature,
             max_retries=max_retries,
-            google_api_key=GOOGLE_API_KEY,
+            google_api_key=api_key,
         )
     
     def _get_ollama(self, temperature: float, max_retries: int) -> ChatOllama:
         """Get Ollama local model (Gemma)."""
+        base_url = self._api_keys.get('ollama_url') or os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
         return ChatOllama(
             model=OLLAMA_MODEL,
             temperature=temperature,
             max_retries=max_retries,
-            base_url=OLLAMA_BASE_URL,
+            base_url=base_url,
         )
     
     def _get_auto_provider(self, temperature: float, max_retries: int) -> BaseChatModel:
         """
         Auto-select provider with fallback priority:
-        1. OpenAI (if API key exists)
-        2. Gemini (if API key exists)
+        1. University-provided API (from .env)
+        2. User-provided API keys (from settings)
         3. Ollama (local fallback)
         """
-        # Try OpenAI first
-        if OPENAI_API_KEY:
+        # Try university-provided OpenAI first
+        env_openai = os.getenv('OPENAI_API_KEY')
+        if env_openai:
             try:
                 return self._get_openai(temperature, max_retries)
             except Exception as e:
-                print(f"OpenAI failed: {e}, trying Gemini...")
+                print(f"University OpenAI failed: {e}, trying other providers...")
         
-        # Try Gemini next
-        if GOOGLE_API_KEY:
+        # Try user-provided OpenAI
+        if self._api_keys.get('openai'):
+            try:
+                return self._get_openai(temperature, max_retries)
+            except Exception as e:
+                print(f"User OpenAI failed: {e}, trying Gemini...")
+        
+        # Try university-provided Gemini
+        env_gemini = os.getenv('GOOGLE_API_KEY')
+        if env_gemini:
             try:
                 return self._get_gemini(temperature, max_retries)
             except Exception as e:
-                print(f"Gemini failed: {e}, trying Ollama...")
+                print(f"University Gemini failed: {e}, trying other providers...")
+        
+        # Try user-provided Gemini
+        if self._api_keys.get('gemini'):
+            try:
+                return self._get_gemini(temperature, max_retries)
+            except Exception as e:
+                print(f"User Gemini failed: {e}, trying Ollama...")
         
         # Fallback to Ollama (local)
         return self._get_ollama(temperature, max_retries)
@@ -140,8 +174,8 @@ class LLMProvider:
     def get_available_providers(self) -> dict[str, bool]:
         """Check which providers are available based on configuration."""
         return {
-            "openai": bool(OPENAI_API_KEY),
-            "gemini": bool(GOOGLE_API_KEY),
+            "openai": bool(self._api_keys.get('openai') or os.getenv('OPENAI_API_KEY')),
+            "gemini": bool(self._api_keys.get('gemini') or os.getenv('GOOGLE_API_KEY')),
             "ollama": True,  # Always available if Ollama is running
         }
 

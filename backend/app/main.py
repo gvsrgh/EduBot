@@ -1,5 +1,5 @@
 """
-EduBot Backend - Multi-Model AI Chatbot
+EduBot+ Backend - Multi-Model AI Chatbot
 
 Main FastAPI application with LangGraph agent workflow.
 """
@@ -17,7 +17,7 @@ from app.routers import auth_router, chat_router, settings_router
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
-    print("🚀 Starting EduBot Backend...")
+    print("🚀 Starting EduBot+ Backend...")
     print("📦 Initializing database...")
     await init_db()
     print("✅ Database initialized")
@@ -27,12 +27,12 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    print("👋 Shutting down EduBot Backend...")
+    print("👋 Shutting down EduBot+ Backend...")
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="EduBot API",
+    title="EduBot+ API",
     description="Multi-Model AI Chatbot with LangGraph Agent Workflow",
     version="1.0.0",
     lifespan=lifespan,
@@ -58,7 +58,7 @@ app.include_router(settings_router.router, prefix="/api")
 async def root():
     """Root endpoint."""
     return {
-        "message": "EduBot API - Multi-Model AI Chatbot",
+        "message": "EduBot+ API - Multi-Model AI Chatbot",
         "version": "1.0.0",
         "docs": "/docs",
         "agent": "LangGraph Agent",

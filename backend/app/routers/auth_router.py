@@ -16,6 +16,15 @@ async def register(
 ):
     """Register a new user."""
     
+    # Check email domain
+    allowed_domains = ['pvpsit.ac.in', 'pvpsiddhartha.ac.in']
+    email_domain = user_data.email.split('@')[-1]
+    if email_domain not in allowed_domains:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Only @pvpsit.ac.in and @pvpsiddhartha.ac.in email addresses are allowed",
+        )
+    
     # Check if username or email already exists
     result = await session.execute(
         select(User).where(
@@ -37,11 +46,14 @@ async def register(
             )
     
     # Create new user
+    # Auto-grant admin privileges to @pvpsiddhartha.ac.in domain users
+    is_admin = user_data.email.endswith('@pvpsiddhartha.ac.in')
     hashed_pw = hash_password(user_data.password)
     new_user = User(
         email=user_data.email,
         username=user_data.username,
         hashed_password=hashed_pw,
+        is_admin=is_admin,
     )
     
     session.add(new_user)
@@ -63,16 +75,16 @@ async def login(
 ):
     """Login user and return access token."""
     
-    # Find user by username
+    # Find user by email
     result = await session.execute(
-        select(User).where(User.username == user_data.username)
+        select(User).where(User.email == user_data.email)
     )
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect email or password",
         )
     
     if not user.is_active:

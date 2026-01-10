@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import os
+from pathlib import Path
 
 from app.db.database import get_session
 from app.db.models import Setting
@@ -83,10 +85,10 @@ async def update_provider_settings(
 
 @router.get("/", response_model=SettingsResponse)
 async def get_settings(
-    current_user: dict = Depends(get_current_admin_user),
+    current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """Get all application settings (Admin only)."""
+    """Get all application settings."""
     
     result = await session.execute(
         select(Setting).order_by(Setting.updated_at.desc())
@@ -106,10 +108,10 @@ async def get_settings(
 @router.put("/", response_model=SettingsResponse)
 async def update_settings(
     settings_data: SettingsUpdate,
-    current_user: dict = Depends(get_current_admin_user),
+    current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """Update application settings (Admin only)."""
+    """Update application settings."""
     
     result = await session.execute(
         select(Setting).order_by(Setting.updated_at.desc())
@@ -138,3 +140,70 @@ async def update_settings(
     await session.refresh(settings)
     
     return SettingsResponse.model_validate(settings)
+
+
+@router.post("/upload-content")
+async def upload_content(
+    file: UploadFile = File(...),
+    category: str = Form(...),
+    topic: str = Form(...),
+    current_user: dict = Depends(get_current_admin_user),
+):
+    """
+    Upload educational content files (Admin only).
+    
+    Categories:
+    - academic: Academic Information
+    - administrative: Administrative & Procedures
+    - events: Events & Announcements
+    """
+    
+    # Validate category
+    valid_categories = ["academic", "administrative", "events"]
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
+        )
+    
+    # Validate file type
+    allowed_extensions = [".txt", ".pdf", ".doc", ".docx", ".md"]
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"
+        )
+    
+    try:
+        # Create category directory if it doesn't exist
+        base_dir = Path("data")
+        category_dir = base_dir / category
+        category_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create safe filename from topic
+        safe_filename = "".join(c if c.isalnum() or c in (' ', '-', '_') else '_' for c in topic)
+        safe_filename = safe_filename.strip().replace(' ', '_')
+        filename = f"{safe_filename}{file_ext}"
+        
+        # Save the file
+        file_path = category_dir / filename
+        content = await file.read()
+        
+        with open(file_path, 'wb') as f:
+            f.write(content)
+        
+        return {
+            "message": "Content uploaded successfully",
+            "filename": filename,
+            "category": category,
+            "topic": topic,
+            "path": str(file_path),
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading file: {str(e)}"
+        )
+

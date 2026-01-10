@@ -39,6 +39,27 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
+    // Add user's API keys from localStorage to headers
+    if (typeof window !== 'undefined') {
+      const savedKeys = localStorage.getItem('edubot_api_keys');
+      if (savedKeys) {
+        try {
+          const apiKeys = JSON.parse(savedKeys);
+          if (apiKeys.openai_key) {
+            headers['X-OpenAI-Key'] = apiKeys.openai_key;
+          }
+          if (apiKeys.gemini_key) {
+            headers['X-Gemini-Key'] = apiKeys.gemini_key;
+          }
+          if (apiKeys.ollama_url) {
+            headers['X-Ollama-Url'] = apiKeys.ollama_url;
+          }
+        } catch (e) {
+          console.error('Failed to parse API keys from localStorage');
+        }
+      }
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
