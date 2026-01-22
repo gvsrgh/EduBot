@@ -21,5 +21,16 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Data Files
 DATA_DIR = Path(__file__).parent.parent / "data"
-UNIVERSITY_INFO_FILE = DATA_DIR / "university_info.txt"
-ACADEMIC_CALENDAR_FILE = DATA_DIR / "academic_calendar.txt"
+
+# Category directories
+ACADEMIC_DIR = DATA_DIR / "Academic"
+ADMINISTRATIVE_DIR = DATA_DIR / "Administrative"
+EDUCATIONAL_DIR = DATA_DIR / "Educational"
+
+# Legacy file paths (for backward compatibility)
+UNIVERSITY_INFO_FILE = ADMINISTRATIVE_DIR / "university_info.txt"
+ACADEMIC_CALENDAR_FILE = ACADEMIC_DIR / "academic_calendar.txt"
+
+# Upload configuration
+ALLOWED_EXTENSIONS = {'.txt'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB

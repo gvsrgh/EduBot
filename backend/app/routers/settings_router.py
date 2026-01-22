@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import httpx
 from typing import Optional
+from pathlib import Path
+import shutil
 
 from app.db.database import get_session
 from app.db.models import Setting
 from app.schemas import ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate, TestConnectionRequest
 from app.auth import get_current_user, get_current_admin_user
 from app.llm_provider import llm_provider
+from app.config import ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR, ALLOWED_EXTENSIONS, MAX_FILE_SIZE
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
@@ -259,5 +262,95 @@ async def update_settings(
     return SettingsResponse.model_validate(settings)
 
 
-
-
+@router.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    category: str = Form(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Upload a text file to the knowledge base.
+    
+    Args:
+        file: The file to upload (must be .txt)
+        category: Category for the file ("Academic", "Administrative", or "Educational")
+        
+    Returns:
+        Success message with file details
+    """
+    
+    # Restrict file upload access for @pvpsit.ac.in users
+    user_email = current_user.get("email", "")
+    if user_email.endswith("@pvpsit.ac.in"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="File upload is not allowed for @pvpsit.ac.in users"
+        )
+    
+    # Validate category
+    valid_categories = {"Academic", "Administrative", "Educational"}
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
+        )
+    
+    # Get category directory
+    category_dirs = {
+        "Academic": ACADEMIC_DIR,
+        "Administrative": ADMINISTRATIVE_DIR,
+        "Educational": EDUCATIONAL_DIR
+    }
+    target_dir = category_dirs[category]
+    
+    # Ensure directory exists
+    target_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Validate file extension
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Only .txt files are allowed."
+        )
+    
+    # Read file content to check size
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File size exceeds maximum limit of {MAX_FILE_SIZE / (1024*1024)}MB"
+        )
+    
+    # Save file
+    file_path = target_dir / file.filename
+    
+    # Check if file already exists
+    if file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"File '{file.filename}' already exists in {category} category"
+        )
+    
+    try:
+        # Write file content
+        with open(file_path, 'wb') as f:
+            f.write(content)
+        
+        return {
+            "success": True,
+            "message": f"File uploaded successfully to {category} category",
+            "filename": file.filename,
+            "category": category,
+            "size": len(content)
+        }
+        
+    except Exception as e:
+        # Clean up if file was partially written
+        if file_path.exists():
+            file_path.unlink()
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error saving file: {str(e)}"
+        )

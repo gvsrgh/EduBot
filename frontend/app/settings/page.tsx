@@ -28,7 +28,10 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const router = useRouter();
   
-  const [activeTab, setActiveTab] = useState<TabType>('upload');
+  // Check if user has upload access (not @pvpsit.ac.in)
+  const hasUploadAccess = user ? !user.email.endsWith('@pvpsit.ac.in') : true;
+  
+  const [activeTab, setActiveTab] = useState<TabType>(hasUploadAccess ? 'upload' : 'model');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -228,14 +231,16 @@ export default function SettingsPage() {
 
         {/* Tab Navigation */}
         <div className={styles.tabNav}>
-          <button
-            type="button"
-            className={`${styles.tabButton} ${activeTab === 'upload' ? styles.tabButtonActive : ''}`}
-            onClick={() => setActiveTab('upload')}
-          >
-            <span className={styles.tabIcon}>📁</span>
-            Upload Documents
-          </button>
+          {hasUploadAccess && (
+            <button
+              type="button"
+              className={`${styles.tabButton} ${activeTab === 'upload' ? styles.tabButtonActive : ''}`}
+              onClick={() => setActiveTab('upload')}
+            >
+              <span className={styles.tabIcon}>📁</span>
+              Upload Documents
+            </button>
+          )}
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'model' ? styles.tabButtonActive : ''}`}
@@ -248,7 +253,7 @@ export default function SettingsPage() {
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.tabContent}>
-            {activeTab === 'upload' && <UploadSection />}
+            {activeTab === 'upload' && hasUploadAccess && <UploadSection />}
             {activeTab === 'model' && (
               <ModelSection
                 formData={formData}
