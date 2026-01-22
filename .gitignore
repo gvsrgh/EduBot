@@ -1,57 +1,118 @@
-# Python
+# ============================================
+# EduBot+ Project - Unified GitIgnore
+# ============================================
+
+# ============================================
+# API Keys & Secrets (IMPORTANT - DO NOT COMMIT)
+# ============================================
+api.txt
+api.json
+.api
+*.key
+secrets.txt
+secrets.json
+
+# ============================================
+# Backend (Python/FastAPI)
+# ============================================
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
+*.pyc
+
+# Virtual environments
 venv/
 env/
 ENV/
 .venv/
+env.bak/
+venv.bak/
+pyvenv.cfg
+
+# Distribution / packaging
+*.so
+.Python
 *.egg-info/
 dist/
 build/
-*.pyc
+*.egg
 
-# Node
+# Testing
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+.tox/
+.nox/
+
+# ============================================
+# Frontend (Next.js/React/TypeScript)
+# ============================================
+# Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+.pnp
+.pnp.js
 .pnpm-store/
 
-# Next.js
+# Next.js build outputs
 .next/
 out/
 .vercel
 
-# Environment variables
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Production build
+frontend/build/
+frontend/dist/
+
+# ============================================
+# Environment Variables
+# ============================================
 .env
 .env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 !.env.example
 
-# Database
+# ============================================
+# Database Files
+# ============================================
 *.db
 *.sqlite
 *.sqlite3
 *.db-journal
 edubot.db
 
-# Ollama models (too large for git)
-.ollama/
-
+# ============================================
 # Logs
+# ============================================
 *.log
 logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# IDE
+# ============================================
+# IDE & Editor Files
+# ============================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+*.sublime-*
+*.sublime-project
+*.sublime-workspace
 
-# OS files
+# ============================================
+# OS Files
+# ============================================
 .DS_Store
 .DS_Store?
 ._*
@@ -59,28 +120,21 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+*.pem
 
-# Docker volumes
+# ============================================
+# Docker & Containers
+# ============================================
 docker-data/
+.ollama/
 
-# Test files
+# ============================================
+# Temporary & Test Files
+# ============================================
 test_*.py
 *_test.py
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-*.sublime-*
-
-# Testing
-coverage/
-.pytest_cache/
-.coverage
-
-# Build outputs
-build/
-dist/
-*.egg-info/
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup

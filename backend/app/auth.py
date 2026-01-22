@@ -3,6 +3,7 @@ from typing import Optional
 from jose import JWTError, jwt
 import hashlib
 import secrets
+import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,11 +76,20 @@ async def get_current_user(
     token = credentials.credentials
     payload = decode_access_token(token)
     
-    user_id: str = payload.get("sub")
-    if user_id is None:
+    user_id_str: str = payload.get("sub")
+    if user_id_str is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
+        )
+    
+    # Convert string UUID to UUID object
+    try:
+        user_id = uuid.UUID(user_id_str)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID format",
         )
     
     # Fetch user from database

@@ -39,8 +39,8 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    // Add user's API keys from localStorage to headers
-    if (typeof window !== 'undefined') {
+    // Add user's API keys from localStorage to headers (only if authenticated)
+    if (typeof window !== 'undefined' && this.token) {
       const savedKeys = localStorage.getItem('edubot_api_keys');
       if (savedKeys) {
         try {

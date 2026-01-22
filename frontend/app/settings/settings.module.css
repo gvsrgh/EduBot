@@ -192,64 +192,6 @@
   color: #fca5a5;
 }
 
-.temperatureControl {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.slider {
-  flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  background: #6366f1;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.slider::-webkit-slider-thumb:hover {
-  background: #7c3aed;
-  transform: scale(1.1);
-}
-
-.slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  background: #6366f1;
-  cursor: pointer;
-  border-radius: 50%;
-  border: none;
-  transition: all 0.3s ease;
-}
-
-.slider::-moz-range-thumb:hover {
-  background: #7c3aed;
-  transform: scale(1.1);
-}
-
-.numberInput {
-  width: 80px;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: #fff;
-  text-align: center;
-  font-size: 0.95rem;
-}
-
 .info {
   color: #9ca3af;
   font-size: 0.9rem;
@@ -305,75 +247,6 @@
   cursor: not-allowed;
 }
 
-/* Upload Form Styles */
-.uploadForm {
-  margin-top: 1rem;
-}
-
-.fileInputWrapper {
-  position: relative;
-  cursor: pointer;
-}
-
-.fileInput {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 2;
-}
-
-.fileInputDisplay {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px dashed rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.fileInputWrapper:hover .fileInputDisplay {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.fileIcon {
-  font-size: 2rem;
-}
-
-.fileName {
-  color: #e5e7eb;
-  font-size: 0.95rem;
-}
-
-.uploadButton {
-  width: 100%;
-  padding: 0.75rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-  margin-top: 1rem;
-}
-
-.uploadButton:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-}
-
-.uploadButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .testButton {
   padding: 0.75rem 1.5rem;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -417,34 +290,7 @@
   font-size: 0.9rem;
 }
 
-.uploadSuccess {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid #22c55e;
-  color: #86efac;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-top: 1rem;
-}
-
-.uploadError {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid #ef4444;
-  color: #fca5a5;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-top: 1rem;
-}
-
 /* Card and Privacy Notice Styles */
-.card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 2rem;
-  backdrop-filter: blur(10px);
-  margin-top: 2rem;
-}
-
 .privacyNotice {
   display: flex;
   align-items: flex-start;
@@ -478,15 +324,6 @@
 
   .form {
     padding: 1.5rem;
-  }
-
-  .temperatureControl {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .numberInput {
-    width: 100%;
   }
 
   .actions {

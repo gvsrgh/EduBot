@@ -12,7 +12,7 @@ langchain==0.3.27
 langchain-core==0.3.81
 langgraph==0.6.8
 langchain-openai==0.3.7
-langchain-google-genai==2.1.4
+langchain-google-genai==4.1.2
 langchain-ollama==0.3.1
 python-dotenv==1.0.1
 httpx==0.28.1
