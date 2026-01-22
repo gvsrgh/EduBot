@@ -31,8 +31,8 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma:7b")
 
 # Application Settings
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
-DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Data Files
 DATA_DIR = Path(__file__).parent.parent / "data"

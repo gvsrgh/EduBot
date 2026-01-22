@@ -3,14 +3,145 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import os
 from pathlib import Path
+import httpx
+from typing import Optional
 
 from app.db.database import get_session
 from app.db.models import Setting
-from app.schemas import ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate
+from app.schemas import ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate, TestConnectionRequest
 from app.auth import get_current_user, get_current_admin_user
 from app.llm_provider import llm_provider
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
+
+
+@router.post("/test-connection")
+async def test_connection(
+    request: TestConnectionRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Test connection to AI providers in real-time.
+    
+    Returns:
+        - success: Boolean indicating if connection was successful
+        - message: Status message
+        - details: Additional details about the connection
+    """
+    
+    provider = request.provider
+    api_key = request.api_key
+    ollama_url = request.ollama_url
+    
+    try:
+        if provider == "openai":
+            if not api_key:
+                return {
+                    "success": False,
+                    "message": "OpenAI API key is required",
+                    "details": None
+                }
+            
+            # Test OpenAI connection
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=10.0
+                )
+                
+                if response.status_code == 200:
+                    models = response.json()
+                    model_count = len(models.get("data", []))
+                    return {
+                        "success": True,
+                        "message": f"Connected to OpenAI successfully",
+                        "details": f"Found {model_count} available models"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Invalid API key or connection failed",
+                        "details": f"Status code: {response.status_code}"
+                    }
+                    
+        elif provider == "gemini":
+            if not api_key:
+                return {
+                    "success": False,
+                    "message": "Gemini API key is required",
+                    "details": None
+                }
+            
+            # Test Gemini connection
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://generativelanguage.googleapis.com/v1/models?key={api_key}",
+                    timeout=10.0
+                )
+                
+                if response.status_code == 200:
+                    models = response.json()
+                    model_count = len(models.get("models", []))
+                    return {
+                        "success": True,
+                        "message": "Connected to Gemini successfully",
+                        "details": f"Found {model_count} available models"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Invalid API key or connection failed",
+                        "details": f"Status code: {response.status_code}"
+                    }
+                    
+        elif provider == "ollama":
+            url = ollama_url or "http://localhost:11434"
+            
+            # Convert localhost to host.docker.internal for Docker environments
+            if "localhost" in url or "127.0.0.1" in url:
+                url = url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+            
+            # Test Ollama connection
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{url}/api/tags",
+                    timeout=5.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    model_count = len(data.get("models", []))
+                    return {
+                        "success": True,
+                        "message": "Connected to Ollama successfully",
+                        "details": f"Found {model_count} model(s)"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Cannot connect to Ollama",
+                        "details": "Make sure Ollama is running"
+                    }
+        else:
+            return {
+                "success": False,
+                "message": "Invalid provider",
+                "details": f"Provider '{provider}' is not supported"
+            }
+            
+    except httpx.TimeoutException:
+        return {
+            "success": False,
+            "message": "Connection timeout",
+            "details": "The request timed out. Check your network or service availability."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": "Connection failed",
+            "details": str(e)
+        }
 
 
 @router.get("/provider", response_model=ProviderResponse)
@@ -111,7 +242,7 @@ async def update_settings(
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """Update application settings."""
+    """Update application settings and provider configuration."""
     
     result = await session.execute(
         select(Setting).order_by(Setting.updated_at.desc())
@@ -125,6 +256,7 @@ async def update_settings(
     # Update fields if provided
     if settings_data.ai_provider is not None:
         settings.ai_provider = settings_data.ai_provider
+        # Update the global provider
         llm_provider.set_provider(settings_data.ai_provider)
     
     if settings_data.deny_words is not None:

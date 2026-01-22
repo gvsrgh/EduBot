@@ -45,6 +45,7 @@ export default function LoginPage() {
               placeholder="your.email@university.edu"
               required
               disabled={loading}
+              suppressHydrationWarning
             />
           </div>
 
@@ -58,12 +59,18 @@ export default function LoginPage() {
               placeholder="Enter your password"
               required
               disabled={loading}
+              suppressHydrationWarning
             />
           </div>
 
           {error && <div className={styles.error}>{error}</div>}
 
-          <button type="submit" className={styles.button} disabled={loading}>
+          <button 
+            type="submit" 
+            className={styles.button} 
+            disabled={loading}
+            suppressHydrationWarning
+          >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>

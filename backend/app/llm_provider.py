@@ -114,6 +114,11 @@ class LLMProvider:
     def _get_ollama(self, temperature: float, max_retries: int) -> ChatOllama:
         """Get Ollama local model (Gemma)."""
         base_url = self._api_keys.get('ollama_url') or os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+        
+        # Convert localhost to host.docker.internal for Docker environments
+        if "localhost" in base_url or "127.0.0.1" in base_url:
+            base_url = base_url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+        
         return ChatOllama(
             model=OLLAMA_MODEL,
             temperature=temperature,

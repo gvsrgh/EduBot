@@ -58,6 +58,7 @@ export default function RegisterPage() {
               placeholder="johndoe"
               required
               disabled={loading}
+              suppressHydrationWarning
             />
           </div>
 
@@ -71,6 +72,7 @@ export default function RegisterPage() {
               placeholder="your.email@university.edu"
               required
               disabled={loading}
+              suppressHydrationWarning
             />
           </div>
 
@@ -84,6 +86,7 @@ export default function RegisterPage() {
               placeholder="At least 6 characters"
               required
               disabled={loading}
+              suppressHydrationWarning
             />
           </div>
 
@@ -97,12 +100,18 @@ export default function RegisterPage() {
               placeholder="Re-enter password"
               required
               disabled={loading}
+              suppressHydrationWarning
             />
           </div>
 
           {error && <div className={styles.error}>{error}</div>}
 
-          <button type="submit" className={styles.button} disabled={loading}>
+          <button 
+            type="submit" 
+            className={styles.button} 
+            disabled={loading}
+            suppressHydrationWarning
+          >
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>

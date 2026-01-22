@@ -21,7 +21,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Check if user is logged in
     const token = apiClient.getToken();
     const userData = localStorage.getItem('user');
     
@@ -30,18 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
   }, []);
-
-  useEffect(() => {
-    // Redirect logic - only redirect away from auth pages if logged in
-    if (!loading) {
-      const authPaths = ['/login', '/register'];
-      const isAuthPath = authPaths.includes(pathname);
-
-      if (user && isAuthPath) {
-        router.push('/chat');
-      }
-    }
-  }, [user, loading, pathname, router]);
 
   const login = async (email: string, password: string) => {
     const response = await apiClient.login({ email, password });
@@ -73,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     apiClient.setToken(null);
     localStorage.removeItem('user');
     setUser(null);
-    router.push('/login');
+    router.push('/chat');
   };
 
   return (

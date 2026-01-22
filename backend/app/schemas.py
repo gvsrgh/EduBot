@@ -113,3 +113,10 @@ class SettingsUpdate(BaseModel):
     deny_words: Optional[str] = None
     max_tokens: Optional[int] = Field(None, ge=100, le=4000)
     temperature: Optional[str] = Field(None, pattern=r"^[0-1](\.[0-9]+)?$")
+
+
+class TestConnectionRequest(BaseModel):
+    """Test connection request schema."""
+    provider: str
+    api_key: Optional[str] = None
+    ollama_url: Optional[str] = None

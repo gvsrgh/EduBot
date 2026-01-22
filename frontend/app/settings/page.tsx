@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import styles from './settings.module.css';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001/api';
+
 interface ProviderSettings {
   ai_provider: string;
   available_providers: {
@@ -69,7 +71,7 @@ export default function SettingsPage() {
       }
 
       // Load provider settings
-      const providerResponse = await fetch('http://localhost:8000/settings/provider', {
+      const providerResponse = await fetch(`${API_BASE}/settings/provider`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -81,7 +83,7 @@ export default function SettingsPage() {
       }
 
       // Load general settings
-      const settingsResponse = await fetch('http://localhost:8000/settings/', {
+      const settingsResponse = await fetch(`${API_BASE}/settings/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -141,7 +143,7 @@ export default function SettingsPage() {
         return;
       }
 
-      const response = await fetch('http://localhost:8000/settings/', {
+      const response = await fetch(`${API_BASE}/settings/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +158,7 @@ export default function SettingsPage() {
         setSuccess('Settings updated successfully!');
         
         // Reload provider settings to get updated available providers
-        const providerResponse = await fetch('http://localhost:8000/settings/provider', {
+        const providerResponse = await fetch(`${API_BASE}/settings/provider`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -200,7 +202,7 @@ export default function SettingsPage() {
       formData.append('category', uploadData.category);
       formData.append('topic', uploadData.topic);
       
-      const response = await fetch('http://localhost:8000/settings/upload-content', {
+      const response = await fetch(`${API_BASE}/settings/upload-content`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -234,21 +236,128 @@ export default function SettingsPage() {
     setOllamaTestStatus('');
     
     try {
-      const response = await fetch(`${apiKeys.ollama_url}/api/tags`, {
-        method: 'GET',
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE}/settings/test-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          provider: 'ollama',
+          ollama_url: apiKeys.ollama_url
+        }),
       });
       
       if (response.ok) {
-        const data = await response.json();
-        const modelCount = data.models?.length || 0;
-        setOllamaTestStatus(`✓ Connected! Found ${modelCount} model(s)`);
+        const result = await response.json();
+        if (result.success) {
+          setOllamaTestStatus(`✓ ${result.message}. ${result.details || ''}`);
+        } else {
+          setOllamaTestStatus(`✗ ${result.message}. ${result.details || ''}`);
+        }
       } else {
-        setOllamaTestStatus('✗ Connection failed. Please check the URL.');
+        setOllamaTestStatus('✗ Connection test failed');
       }
     } catch (err) {
       setOllamaTestStatus('✗ Cannot connect. Make sure Ollama is running.');
     } finally {
       setTestingOllama(false);
+    }
+  };
+  
+  const testOpenAIConnection = async () => {
+    if (!apiKeys.openai_key) {
+      setError('Please enter an OpenAI API key first');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE}/settings/test-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          provider: 'openai',
+          api_key: apiKeys.openai_key
+        }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setSuccess(`✓ ${result.message}. ${result.details || ''}`);
+        } else {
+          setError(`✗ ${result.message}. ${result.details || ''}`);
+        }
+      } else {
+        setError('Connection test failed');
+      }
+    } catch (err) {
+      setError('Cannot connect to OpenAI');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const testGeminiConnection = async () => {
+    if (!apiKeys.gemini_key) {
+      setError('Please enter a Gemini API key first');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE}/settings/test-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          provider: 'gemini',
+          api_key: apiKeys.gemini_key
+        }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setSuccess(`✓ ${result.message}. ${result.details || ''}`);
+        } else {
+          setError(`✗ ${result.message}. ${result.details || ''}`);
+        }
+      } else {
+        setError('Connection test failed');
+      }
+    } catch (err) {
+      setError('Cannot connect to Gemini');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -322,6 +431,15 @@ export default function SettingsPage() {
               <small className={styles.hint}>
                 Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">OpenAI Platform</a>
               </small>
+              <button
+                type="button"
+                onClick={testOpenAIConnection}
+                disabled={loading || !apiKeys.openai_key}
+                className={styles.testButton}
+                style={{ marginTop: '8px' }}
+              >
+                {loading ? 'Testing...' : '🔍 Test Connection'}
+              </button>
             </div>
           )}
           
@@ -343,6 +461,15 @@ export default function SettingsPage() {
               <small className={styles.hint}>
                 Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>
               </small>
+              <button
+                type="button"
+                onClick={testGeminiConnection}
+                disabled={loading || !apiKeys.gemini_key}
+                className={styles.testButton}
+                style={{ marginTop: '8px' }}
+              >
+                {loading ? 'Testing...' : '🔍 Test Connection'}
+              </button>
             </div>
           )}
           
