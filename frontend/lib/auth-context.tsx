@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     apiClient.setToken(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('edubot_api_keys');
     setUser(null);
     router.push('/chat');
   };

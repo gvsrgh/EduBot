@@ -17,9 +17,6 @@ interface ProviderSettings {
 interface Settings {
   id: number;
   ai_provider: string;
-  deny_words: string;
-  max_tokens: number;
-  temperature: string;
   updated_at: string;
 }
 
@@ -41,15 +38,21 @@ export default function SettingsPage() {
   
   const [apiKeys, setApiKeys] = useState({
     openai_key: '',
-    openai_model: 'gpt-4',
+    openai_model: 'gpt-4o-mini',
     gemini_key: '',
-    gemini_model: 'gemini-2.0-flash-exp',
+    gemini_model: 'gemini-2.5-flash',
     ollama_url: 'http://localhost:11434',
     ollama_model: 'llama3.1:8b',
   });
   
   const [ollamaTestStatus, setOllamaTestStatus] = useState('');
   const [testingOllama, setTestingOllama] = useState(false);
+  
+  const [openaiTestStatus, setOpenaiTestStatus] = useState('');
+  const [testingOpenai, setTestingOpenai] = useState(false);
+  
+  const [geminiTestStatus, setGeminiTestStatus] = useState('');
+  const [testingGemini, setTestingGemini] = useState(false);
 
   const loadSettings = async () => {
     try {
@@ -110,7 +113,27 @@ export default function SettingsPage() {
     const savedKeys = localStorage.getItem('edubot_api_keys');
     if (savedKeys) {
       try {
-        setApiKeys(JSON.parse(savedKeys));
+        const parsedKeys = JSON.parse(savedKeys);
+        
+        // Migrate old model names to supported ones
+        const migratedKeys = { ...parsedKeys };
+        
+        // Migrate OpenAI models to gpt-4o-mini
+        if (parsedKeys.openai_model && parsedKeys.openai_model !== 'gpt-4o-mini') {
+          migratedKeys.openai_model = 'gpt-4o-mini';
+        }
+        
+        // Migrate Gemini models to gemini-2.5-flash
+        if (parsedKeys.gemini_model && !['gemini-2.5-flash', 'gemini-flash-latest'].includes(parsedKeys.gemini_model)) {
+          migratedKeys.gemini_model = 'gemini-2.5-flash';
+        }
+        
+        // Save migrated keys back to localStorage if changes were made
+        if (JSON.stringify(parsedKeys) !== JSON.stringify(migratedKeys)) {
+          localStorage.setItem('edubot_api_keys', JSON.stringify(migratedKeys));
+        }
+        
+        setApiKeys(migratedKeys);
       } catch (e) {
         console.error('Failed to parse saved API keys');
       }
@@ -144,7 +167,7 @@ export default function SettingsPage() {
       if (response.ok) {
         const updatedSettings = await response.json();
         setSettings(updatedSettings);
-        setSuccess('Settings updated successfully!');
+        setSuccess('User settings saved successfully!');
         
         // Reload provider settings to get updated available providers
         const providerResponse = await fetch(`${API_BASE}/settings/provider`, {
@@ -156,6 +179,11 @@ export default function SettingsPage() {
           const providerData = await providerResponse.json();
           setProviderSettings(providerData);
         }
+        
+        // Redirect to chat page after 1 second
+        setTimeout(() => {
+          router.push('/chat');
+        }, 1000);
       } else if (response.status === 403) {
         setError('Access denied. Admin privileges with @pvpsiddhartha.ac.in domain required.');
       } else {
@@ -207,17 +235,20 @@ export default function SettingsPage() {
       setOllamaTestStatus('✗ Cannot connect. Make sure Ollama is running.');
     } finally {
       setTestingOllama(false);
+      // Auto-clear status after 3 seconds
+      setTimeout(() => setOllamaTestStatus(''), 3000);
     }
   };
   
   const testOpenAIConnection = async () => {
     if (!apiKeys.openai_key) {
-      setError('Please enter an OpenAI API key first');
+      setOpenaiTestStatus('✗ Please enter an OpenAI API key first');
+      setTimeout(() => setOpenaiTestStatus(''), 3000);
       return;
     }
     
-    setLoading(true);
-    setError('');
+    setTestingOpenai(true);
+    setOpenaiTestStatus('');
     
     try {
       const token = localStorage.getItem('token');
@@ -241,28 +272,31 @@ export default function SettingsPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setSuccess(`✓ ${result.message}. ${result.details || ''}`);
+          setOpenaiTestStatus(`✓ ${result.message}. ${result.details || ''}`);
         } else {
-          setError(`✗ ${result.message}. ${result.details || ''}`);
+          setOpenaiTestStatus(`✗ ${result.message}. ${result.details || ''}`);
         }
       } else {
-        setError('Connection test failed');
+        setOpenaiTestStatus('✗ Connection test failed');
       }
     } catch (err) {
-      setError('Cannot connect to OpenAI');
+      setOpenaiTestStatus('✗ Cannot connect to OpenAI');
     } finally {
-      setLoading(false);
+      setTestingOpenai(false);
+      // Auto-clear status after 3 seconds
+      setTimeout(() => setOpenaiTestStatus(''), 3000);
     }
   };
   
   const testGeminiConnection = async () => {
     if (!apiKeys.gemini_key) {
-      setError('Please enter a Gemini API key first');
+      setGeminiTestStatus('✗ Please enter a Gemini API key first');
+      setTimeout(() => setGeminiTestStatus(''), 3000);
       return;
     }
     
-    setLoading(true);
-    setError('');
+    setTestingGemini(true);
+    setGeminiTestStatus('');
     
     try {
       const token = localStorage.getItem('token');
@@ -286,17 +320,19 @@ export default function SettingsPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setSuccess(`✓ ${result.message}. ${result.details || ''}`);
+          setGeminiTestStatus(`✓ ${result.message}. ${result.details || ''}`);
         } else {
-          setError(`✗ ${result.message}. ${result.details || ''}`);
+          setGeminiTestStatus(`✗ ${result.message}. ${result.details || ''}`);
         }
       } else {
-        setError('Connection test failed');
+        setGeminiTestStatus('✗ Connection test failed');
       }
     } catch (err) {
-      setError('Cannot connect to Gemini');
+      setGeminiTestStatus('✗ Cannot connect to Gemini');
     } finally {
-      setLoading(false);
+      setTestingGemini(false);
+      // Auto-clear status after 3 seconds
+      setTimeout(() => setGeminiTestStatus(''), 3000);
     }
   };
 
@@ -384,11 +420,7 @@ export default function SettingsPage() {
                   }}
                   className={styles.select}
                 >
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                  <option value="gpt-4o">GPT-4o</option>
-                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                  <option value="gpt-4o-mini">GPT-4o Mini (Recommended for Chatbots & QA)</option>
                 </select>
                 <small className={styles.hint}>
                   Select the OpenAI model to use
@@ -398,11 +430,16 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={testOpenAIConnection}
-                  disabled={loading || !apiKeys.openai_key}
+                  disabled={testingOpenai || !apiKeys.openai_key}
                   className={styles.testButton}
                 >
-                  {loading ? 'Testing...' : '🔍 Test Connection'}
+                  {testingOpenai ? 'Testing...' : '🔍 Test Connection'}
                 </button>
+                {openaiTestStatus && (
+                  <div className={openaiTestStatus.startsWith('✓') ? styles.testSuccess : styles.testError}>
+                    {openaiTestStatus}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -439,10 +476,8 @@ export default function SettingsPage() {
                   }}
                   className={styles.select}
                 >
-                  <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
-                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                  <option value="gemini-pro">Gemini Pro</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended - Fast and efficient)</option>
+                  <option value="gemini-flash-latest">Gemini Flash Latest (Always latest flash model)</option>
                 </select>
                 <small className={styles.hint}>
                   Select the Gemini model to use
@@ -452,11 +487,16 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={testGeminiConnection}
-                  disabled={loading || !apiKeys.gemini_key}
+                  disabled={testingGemini || !apiKeys.gemini_key}
                   className={styles.testButton}
                 >
-                  {loading ? 'Testing...' : '🔍 Test Connection'}
+                  {testingGemini ? 'Testing...' : '🔍 Test Connection'}
                 </button>
+                {geminiTestStatus && (
+                  <div className={geminiTestStatus.startsWith('✓') ? styles.testSuccess : styles.testError}>
+                    {geminiTestStatus}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -517,20 +557,6 @@ export default function SettingsPage() {
                 )}
               </div>
             </>
-          )}
-          
-          {providerSettings && (
-            <div className={styles.providerStatus}>
-              <p><strong>Current Active Provider:</strong> {providerSettings.ai_provider}</p>
-              <p><strong>System Status:</strong></p>
-                <ul>
-                  {Object.entries(providerSettings.available_providers).map(([provider, available]) => (
-                    <li key={provider} className={available ? styles.available : styles.unavailable}>
-                      {provider}: {available ? '✓ Available' : '✗ Unavailable'}
-                    </li>
-                  ))}
-                </ul>
-            </div>
           )}
         </section>
 

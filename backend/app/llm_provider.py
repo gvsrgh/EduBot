@@ -26,9 +26,9 @@ class LLMProvider:
         self.current_provider: str = "ollama"  # Default to local
         self._api_keys = {
             'openai': None,
-            'openai_model': 'gpt-4',
+            'openai_model': 'gpt-4o-mini',
             'gemini': None,
-            'gemini_model': 'gemini-2.0-flash-exp',
+            'gemini_model': 'gemini-2.5-flash',
             'ollama_url': 'http://localhost:11434',
             'ollama_model': 'llama3.1:8b'
         }
@@ -102,7 +102,12 @@ class LLMProvider:
         if not api_key:
             raise ValueError("OPENAI_API_KEY not configured")
         
-        model = self._api_keys.get('openai_model') or 'gpt-4'
+        model = self._api_keys.get('openai_model') or 'gpt-4o-mini'
+        
+        # Validate supported models
+        supported_models = ['gpt-4o-mini']
+        if model not in supported_models:
+            raise ValueError(f"Model '{model}' is not supported. Please use GPT-4o Mini for optimal performance.")
         
         return ChatOpenAI(
             model=model,
@@ -117,7 +122,12 @@ class LLMProvider:
         if not api_key:
             raise ValueError("GOOGLE_API_KEY not configured")
         
-        model = self._api_keys.get('gemini_model') or 'gemini-2.0-flash-exp'
+        model = self._api_keys.get('gemini_model') or 'gemini-2.5-flash'
+        
+        # Validate supported models
+        supported_models = ['gemini-2.5-flash', 'gemini-flash-latest']
+        if model not in supported_models:
+            raise ValueError(f"Model '{model}' is not supported. Please use Gemini 2.5 Flash or Gemini Flash Latest for optimal performance.")
         
         return ChatGoogleGenerativeAI(
             model=model,

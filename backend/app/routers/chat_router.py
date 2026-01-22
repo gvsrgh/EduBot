@@ -42,6 +42,7 @@ def set_user_api_keys(
 async def send_message_public(
     message_data: MessageCreate,
     session: AsyncSession = Depends(get_session),
+    api_keys: None = Depends(set_user_api_keys)
 ):
     """Send a message without authentication (for testing)."""
     
