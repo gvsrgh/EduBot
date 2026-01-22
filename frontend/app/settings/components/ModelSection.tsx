@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from '../settings.module.css';
+import CustomSelect from '../../components/CustomSelect';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001/api';
 
@@ -191,17 +192,17 @@ export default function ModelSection({
     
       <div className={styles.formGroup}>
         <label htmlFor="ai_provider">Select Provider</label>
-        <select
+        <CustomSelect
           id="ai_provider"
           value={formData.ai_provider}
-          onChange={(e) => setFormData({ ...formData, ai_provider: e.target.value })}
-          className={styles.select}
-        >
-          <option value="ollama">Local Ollama (Recommended)</option>
-          <option value="openai">OpenAI GPT-4</option>
-          <option value="gemini">Google Gemini</option>
-          <option value="auto">Auto (University-Provided API with Fallback)</option>
-        </select>
+          onChange={(value) => setFormData({ ...formData, ai_provider: value })}
+          options={[
+            { value: 'ollama', label: 'Local Ollama (Recommended)' },
+            { value: 'openai', label: 'OpenAI GPT-4' },
+            { value: 'gemini', label: 'Google Gemini' },
+            { value: 'auto', label: 'Auto (University-Provided API with Fallback)' },
+          ]}
+        />
       </div>
       
       {/* Ollama Configuration */}
@@ -286,18 +287,18 @@ export default function ModelSection({
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="openai_model">OpenAI Model</label>
-            <select
+            <CustomSelect
               id="openai_model"
               value={apiKeys.openai_model}
-              onChange={(e) => {
-                const newKeys = { ...apiKeys, openai_model: e.target.value };
+              onChange={(value) => {
+                const newKeys = { ...apiKeys, openai_model: value };
                 setApiKeys(newKeys);
                 localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
               }}
-              className={styles.select}
-            >
-              <option value="gpt-4o-mini">GPT-4o Mini (Recommended for Chatbots & QA)</option>
-            </select>
+              options={[
+                { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Recommended for Chatbots & QA)' },
+              ]}
+            />
             <small className={styles.hint}>
               Select the OpenAI model to use
             </small>
@@ -343,19 +344,19 @@ export default function ModelSection({
           </div>
           <div className={styles.formGroup}>
             <label htmlFor="gemini_model">Gemini Model</label>
-            <select
+            <CustomSelect
               id="gemini_model"
               value={apiKeys.gemini_model}
-              onChange={(e) => {
-                const newKeys = { ...apiKeys, gemini_model: e.target.value };
+              onChange={(value) => {
+                const newKeys = { ...apiKeys, gemini_model: value };
                 setApiKeys(newKeys);
                 localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
               }}
-              className={styles.select}
-            >
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended - Fast and efficient)</option>
-              <option value="gemini-flash-latest">Gemini Flash Latest (Always latest flash model)</option>
-            </select>
+              options={[
+                { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Recommended - Fast and efficient)' },
+                { value: 'gemini-flash-latest', label: 'Gemini Flash Latest (Always latest flash model)' },
+              ]}
+            />
             <small className={styles.hint}>
               Select the Gemini model to use
             </small>

@@ -60,7 +60,20 @@ async def send_message_public(
         
         # Extract answer from last message
         final_message = result["messages"][-1]
-        answer = final_message.content
+        content = final_message.content
+        
+        # Ensure content is a string (LangChain can return list of content blocks)
+        if isinstance(content, list):
+            # Extract text from content blocks
+            text_parts = []
+            for block in content:
+                if isinstance(block, str):
+                    text_parts.append(block)
+                elif isinstance(block, dict) and 'text' in block:
+                    text_parts.append(block['text'])
+            answer = '\n'.join(text_parts) if text_parts else str(content)
+        else:
+            answer = str(content) if content else ""
         
         return {
             "success": True,
@@ -143,7 +156,20 @@ async def send_message(
         
         # Extract answer from last message
         final_message = result["messages"][-1]
-        answer = final_message.content
+        content = final_message.content
+        
+        # Ensure content is a string (LangChain can return list of content blocks)
+        if isinstance(content, list):
+            # Extract text from content blocks
+            text_parts = []
+            for block in content:
+                if isinstance(block, str):
+                    text_parts.append(block)
+                elif isinstance(block, dict) and 'text' in block:
+                    text_parts.append(block['text'])
+            answer = '\n'.join(text_parts) if text_parts else str(content)
+        else:
+            answer = str(content) if content else ""
         
         # Save message to database
         new_message = Message(
@@ -214,7 +240,18 @@ async def send_message_stream(
                 
                 # Stream status updates
                 if kind == "on_chat_model_stream":
-                    content = event["data"]["chunk"].content
+                    chunk_content = event["data"]["chunk"].content
+                    # Ensure content is a string
+                    if isinstance(chunk_content, list):
+                        text_parts = []
+                        for block in chunk_content:
+                            if isinstance(block, str):
+                                text_parts.append(block)
+                            elif isinstance(block, dict) and 'text' in block:
+                                text_parts.append(block['text'])
+                        content = ''.join(text_parts)
+                    else:
+                        content = str(chunk_content) if chunk_content else ""
                     if content:
                         accumulated_answer += content
                         yield f"data: {json.dumps({'type': 'content', 'data': content})}\n\n"

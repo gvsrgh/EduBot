@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import styles from '../settings.module.css';
+import CustomSelect from '../../components/CustomSelect';
 
 type FileCategory = 'Academic' | 'Administrative' | 'Educational';
 
@@ -183,16 +184,16 @@ export default function UploadSection() {
       {/* Category Selector */}
       <div className={styles.categorySelector}>
         <label htmlFor="defaultCategory">Default Category for New Files:</label>
-        <select 
+        <CustomSelect
           id="defaultCategory"
           value={defaultCategory}
-          onChange={(e) => setDefaultCategory(e.target.value as FileCategory)}
-          className={styles.categorySelect}
-        >
-          <option value="Academic">📅 Academic (Calendars, Schedules, Dates)</option>
-          <option value="Administrative">🏛️ Administrative (Policies, Procedures, Info)</option>
-          <option value="Educational">📖 Educational (Course Materials, Resources)</option>
-        </select>
+          onChange={(value) => setDefaultCategory(value as FileCategory)}
+          options={[
+            { value: 'Academic', label: '📅 Academic (Calendars, Schedules, Dates)' },
+            { value: 'Administrative', label: '🏛️ Administrative (Policies, Procedures, Info)' },
+            { value: 'Educational', label: '📖 Educational (Course Materials, Resources)' },
+          ]}
+        />
       </div>
 
       <div 
@@ -231,16 +232,18 @@ export default function UploadSection() {
                     <p className={styles.fileName}>{item.file.name}</p>
                     <p className={styles.fileSize}>{formatFileSize(item.file.size)}</p>
                   </div>
-                  <select 
-                    value={item.category}
-                    onChange={(e) => updateFileCategory(index, e.target.value as FileCategory)}
-                    className={styles.fileCategorySelect}
-                    disabled={isUploading}
-                  >
-                    <option value="Academic">📅 Academic</option>
-                    <option value="Administrative">🏛️ Administrative</option>
-                    <option value="Educational">📖 Educational</option>
-                  </select>
+                  <div className={styles.fileCategorySelectWrapper}>
+                    <CustomSelect
+                      value={item.category}
+                      onChange={(value) => updateFileCategory(index, value as FileCategory)}
+                      disabled={isUploading}
+                      options={[
+                        { value: 'Academic', label: '📅 Academic' },
+                        { value: 'Administrative', label: '🏛️ Administrative' },
+                        { value: 'Educational', label: '📖 Educational' },
+                      ]}
+                    />
+                  </div>
                 </div>
                 <button
                   type="button"

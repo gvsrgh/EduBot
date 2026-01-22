@@ -432,11 +432,17 @@
   border-radius: var(--radius-md);
 }
 
-.categorySelector label {
+.categorySelector > label {
   color: var(--text-secondary);
   font-weight: 500;
   font-size: 0.95rem;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Allow CustomSelect to take remaining space */
+.categorySelector > div {
+  flex: 1;
 }
 
 .categorySelect,
@@ -449,6 +455,11 @@
   font-size: 0.9rem;
   cursor: pointer;
   transition: all var(--transition-fast);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
 }
 
 .categorySelect {
@@ -457,6 +468,11 @@
 
 .fileCategorySelect {
   min-width: 200px;
+}
+
+.fileCategorySelectWrapper {
+  min-width: 200px;
+  flex-shrink: 0;
 }
 
 .categorySelect:hover,
@@ -470,6 +486,23 @@
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.categorySelect option,
+.fileCategorySelect option {
+  background: #252538;
+  color: var(--text-primary);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.categorySelect option:hover,
+.fileCategorySelect option:hover {
+  background: #1a1a2e;
+}
+
+.categorySelect option:checked,
+.fileCategorySelect option:checked {
+  background: #252538;
 }
 
 /* Upload Status Message */
@@ -585,9 +618,17 @@
 }
 
 .select option {
-  background: #1a1a2e;
+  background: #252538;
   color: var(--text-primary);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.select option:hover {
+  background: #1a1a2e;
+}
+
+.select option:checked {
+  background: #252538;
 }
 
 .textarea {
