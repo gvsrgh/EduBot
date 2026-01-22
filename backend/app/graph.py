@@ -28,7 +28,7 @@ class AgentState(TypedDict):
 
 def agent_node(state: AgentState) -> AgentState:
     """
-    Agent Node - Uses the selected LLM with tools
+    Agent Node - Uses the selected LLM with or without tools
     
     The LLM analyzes the user's question and decides:
     1. Whether to use tools to retrieve information from local files
@@ -37,11 +37,17 @@ def agent_node(state: AgentState) -> AgentState:
     """
     print("---NODE: AGENT LLM---")
     
-    # Get the current LLM with tools bound
+    # Get the current LLM
     llm = get_current_llm(temperature=0.3)
-    llm_with_tools = llm.bind_tools(available_tools)
     
-    system_message = SystemMessage(content="""You are a helpful university chatbot assistant with access to local university information.
+    # Check if model supports tools
+    from app.llm_provider import llm_provider
+    
+    if llm_provider.supports_tools():
+        print("Using LLM with tool support")
+        llm_with_tools = llm.bind_tools(available_tools)
+        
+        system_message = SystemMessage(content="""You are a helpful university chatbot assistant with access to local university information.
 
 Your capabilities:
 1. Answer questions using information from university files
@@ -62,9 +68,25 @@ Guidelines:
 - If information isn't in the files, say so clearly
 
 Extract key search terms from questions when calling tools.""")
-    
-    messages = [system_message] + list(state["messages"])
-    response = llm_with_tools.invoke(messages)
+        
+        messages = [system_message] + list(state["messages"])
+        response = llm_with_tools.invoke(messages)
+    else:
+        print("Using LLM WITHOUT tool support - direct responses only")
+        
+        system_message = SystemMessage(content="""You are a helpful university chatbot assistant.
+
+Provide clear, concise, and helpful responses to user questions. Answer to the best of your knowledge about university-related topics including:
+- Academic programs and courses
+- Tuition and fees
+- Academic calendars and deadlines
+- University policies and procedures
+- General educational topics
+
+Be friendly, informative, and professional. If you don't know something specific to this university, say so honestly.""")
+        
+        messages = [system_message] + list(state["messages"])
+        response = llm.invoke(messages)
     
     return {"messages": [response]}
 
@@ -74,6 +96,12 @@ def should_continue(state: AgentState) -> Literal["tools", "end"]:
     print("---DECISION: SHOULD CONTINUE?---")
     
     last_message = state["messages"][-1]
+    
+    # Check if model supports tools first
+    from app.llm_provider import llm_provider
+    if not llm_provider.supports_tools():
+        print("NO: Model doesn't support tools, ending")
+        return "end"
     
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
         print(f"YES: Calling {len(last_message.tool_calls)} tool(s)")

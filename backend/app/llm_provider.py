@@ -4,9 +4,9 @@ Multi-Provider LLM Configuration Module
 This module handles dynamic model selection between:
 - OpenAI GPT-4
 - Google Gemini
-- Gemma (via Ollama local)
+- Local Ollama models
 
-Selection is controlled via AI_PROVIDER environment variable.
+Selection is controlled via user settings stored in localStorage.
 """
 
 import os
@@ -15,12 +15,6 @@ from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_core.language_models.chat_models import BaseChatModel
-from app.config import (
-    AI_PROVIDER,
-    OPENAI_MODEL,
-    GEMINI_MODEL,
-    OLLAMA_MODEL,
-)
 
 ProviderType = Literal["openai", "gemini", "ollama", "auto"]
 
@@ -29,21 +23,38 @@ class LLMProvider:
     """Manages dynamic LLM provider selection and fallback."""
     
     def __init__(self):
-        self.current_provider: str = AI_PROVIDER
+        self.current_provider: str = "ollama"  # Default to local
         self._api_keys = {
             'openai': None,
+            'openai_model': 'gpt-4',
             'gemini': None,
-            'ollama_url': 'http://localhost:11434'
+            'gemini_model': 'gemini-2.0-flash-exp',
+            'ollama_url': 'http://localhost:11434',
+            'ollama_model': 'llama3.1:8b'
         }
     
-    def set_api_keys(self, openai_key: str = None, gemini_key: str = None, ollama_url: str = None):
-        """Set API keys dynamically from user settings."""
+    def set_api_keys(
+        self, 
+        openai_key: str = None, 
+        openai_model: str = None,
+        gemini_key: str = None,
+        gemini_model: str = None,
+        ollama_url: str = None,
+        ollama_model: str = None
+    ):
+        """Set API keys and models dynamically from user settings."""
         if openai_key:
             self._api_keys['openai'] = openai_key
+        if openai_model:
+            self._api_keys['openai_model'] = openai_model
         if gemini_key:
             self._api_keys['gemini'] = gemini_key
+        if gemini_model:
+            self._api_keys['gemini_model'] = gemini_model
         if ollama_url:
             self._api_keys['ollama_url'] = ollama_url
+        if ollama_model:
+            self._api_keys['ollama_model'] = ollama_model
     
     def get_api_keys(self) -> dict:
         """Get current API keys."""
@@ -91,8 +102,10 @@ class LLMProvider:
         if not api_key:
             raise ValueError("OPENAI_API_KEY not configured")
         
+        model = self._api_keys.get('openai_model') or 'gpt-4'
+        
         return ChatOpenAI(
-            model=OPENAI_MODEL,
+            model=model,
             temperature=temperature,
             max_retries=max_retries,
             openai_api_key=api_key,
@@ -104,23 +117,22 @@ class LLMProvider:
         if not api_key:
             raise ValueError("GOOGLE_API_KEY not configured")
         
+        model = self._api_keys.get('gemini_model') or 'gemini-2.0-flash-exp'
+        
         return ChatGoogleGenerativeAI(
-            model=GEMINI_MODEL,
+            model=model,
             temperature=temperature,
             max_retries=max_retries,
             google_api_key=api_key,
         )
     
     def _get_ollama(self, temperature: float, max_retries: int) -> ChatOllama:
-        """Get Ollama local model (Gemma)."""
-        base_url = self._api_keys.get('ollama_url') or os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
-        
-        # Convert localhost to host.docker.internal for Docker environments
-        if "localhost" in base_url or "127.0.0.1" in base_url:
-            base_url = base_url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+        """Get Ollama local model."""
+        base_url = self._api_keys.get('ollama_url') or 'http://localhost:11434'
+        model = self._api_keys.get('ollama_model') or 'llama3.1:8b'
         
         return ChatOllama(
-            model=OLLAMA_MODEL,
+            model=model,
             temperature=temperature,
             max_retries=max_retries,
             base_url=base_url,
@@ -175,6 +187,25 @@ class LLMProvider:
     def get_current_provider(self) -> str:
         """Get the currently active provider."""
         return self.current_provider
+    
+    def supports_tools(self) -> bool:
+        """Check if the current model supports tool/function calling."""
+        provider = self.current_provider.lower()
+        
+        if provider == "openai":
+            return True
+        elif provider == "gemini":
+            return True
+        elif provider == "ollama":
+            # Some Ollama models don't support tools
+            model = self._api_keys.get('ollama_model', '').lower()
+            # Known models without tool support
+            non_tool_models = ['gemma', 'phi', 'tinyllama', 'stablelm']
+            return not any(nm in model for nm in non_tool_models)
+        elif provider == "auto":
+            # Check the actual provider that would be selected
+            return True  # Assume auto will pick a tool-capable model
+        return False
     
     def get_available_providers(self) -> dict[str, bool]:
         """Check which providers are available based on configuration."""

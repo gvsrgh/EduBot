@@ -21,14 +21,20 @@ agent_graph = create_agent_graph()
 
 def set_user_api_keys(
     x_openai_key: Optional[str] = Header(None),
+    x_openai_model: Optional[str] = Header(None),
     x_gemini_key: Optional[str] = Header(None),
-    x_ollama_url: Optional[str] = Header(None)
+    x_gemini_model: Optional[str] = Header(None),
+    x_ollama_url: Optional[str] = Header(None),
+    x_ollama_model: Optional[str] = Header(None)
 ):
-    """Extract and set API keys from request headers."""
+    """Extract and set API keys and models from request headers."""
     llm_provider.set_api_keys(
         openai_key=x_openai_key,
+        openai_model=x_openai_model,
         gemini_key=x_gemini_key,
-        ollama_url=x_ollama_url
+        gemini_model=x_gemini_model,
+        ollama_url=x_ollama_url,
+        ollama_model=x_ollama_model
     )
 
 

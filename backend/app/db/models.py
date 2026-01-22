@@ -68,9 +68,6 @@ class Setting(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     ai_provider = Column(String(50), default="ollama")  # openai, gemini, ollama, auto
-    deny_words = Column(Text, default="")  # Comma-separated list of blocked words
-    max_tokens = Column(Integer, default=2000)
-    temperature = Column(String(10), default="0.7")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     

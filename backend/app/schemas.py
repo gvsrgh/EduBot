@@ -99,9 +99,6 @@ class ProviderResponse(BaseModel):
 class SettingsResponse(BaseModel):
     id: int
     ai_provider: str
-    deny_words: str
-    max_tokens: int
-    temperature: str
     updated_at: datetime
     
     class Config:
@@ -110,9 +107,6 @@ class SettingsResponse(BaseModel):
 
 class SettingsUpdate(BaseModel):
     ai_provider: Optional[str] = Field(None, pattern="^(openai|gemini|ollama|auto)$")
-    deny_words: Optional[str] = None
-    max_tokens: Optional[int] = Field(None, ge=100, le=4000)
-    temperature: Optional[str] = Field(None, pattern=r"^[0-1](\.[0-9]+)?$")
 
 
 class TestConnectionRequest(BaseModel):

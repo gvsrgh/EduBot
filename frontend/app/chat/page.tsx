@@ -109,10 +109,10 @@ export default function ChatPage() {
               <h2>Welcome to EduBot+! 👋</h2>
               <p>Ask me anything about the university:</p>
               <ul>
-                <li>How can I pay my tuition fees?</li>
-                <li>Is November 1 a holiday?</li>
-                <li>What is SQL and do we use it at the university?</li>
-                <li>When is the fall semester tuition deadline?</li>
+                <li>What is the B.Tech fee structure for management and convenor quota?</li>
+                <li>When is Republic Day in 2026?</li>
+                <li>What are the exam dates for I B.Tech first semester?</li>
+                <li>When does the IV B.Tech second semester start?</li>
               </ul>
             </div>
           )}

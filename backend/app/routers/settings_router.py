@@ -1,8 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-import os
-from pathlib import Path
 import httpx
 from typing import Optional
 
@@ -97,10 +95,6 @@ async def test_connection(
                     
         elif provider == "ollama":
             url = ollama_url or "http://localhost:11434"
-            
-            # Convert localhost to host.docker.internal for Docker environments
-            if "localhost" in url or "127.0.0.1" in url:
-                url = url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
             
             # Test Ollama connection
             async with httpx.AsyncClient() as client:
@@ -253,20 +247,11 @@ async def update_settings(
         settings = Setting()
         session.add(settings)
     
-    # Update fields if provided
+    # Update AI provider if provided
     if settings_data.ai_provider is not None:
         settings.ai_provider = settings_data.ai_provider
         # Update the global provider
         llm_provider.set_provider(settings_data.ai_provider)
-    
-    if settings_data.deny_words is not None:
-        settings.deny_words = settings_data.deny_words
-    
-    if settings_data.max_tokens is not None:
-        settings.max_tokens = settings_data.max_tokens
-    
-    if settings_data.temperature is not None:
-        settings.temperature = settings_data.temperature
     
     await session.commit()
     await session.refresh(settings)
@@ -274,68 +259,5 @@ async def update_settings(
     return SettingsResponse.model_validate(settings)
 
 
-@router.post("/upload-content")
-async def upload_content(
-    file: UploadFile = File(...),
-    category: str = Form(...),
-    topic: str = Form(...),
-    current_user: dict = Depends(get_current_admin_user),
-):
-    """
-    Upload educational content files (Admin only).
-    
-    Categories:
-    - academic: Academic Information
-    - administrative: Administrative & Procedures
-    - events: Events & Announcements
-    """
-    
-    # Validate category
-    valid_categories = ["academic", "administrative", "events"]
-    if category not in valid_categories:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
-        )
-    
-    # Validate file type
-    allowed_extensions = [".txt", ".pdf", ".doc", ".docx", ".md"]
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"
-        )
-    
-    try:
-        # Create category directory if it doesn't exist
-        base_dir = Path("data")
-        category_dir = base_dir / category
-        category_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create safe filename from topic
-        safe_filename = "".join(c if c.isalnum() or c in (' ', '-', '_') else '_' for c in topic)
-        safe_filename = safe_filename.strip().replace(' ', '_')
-        filename = f"{safe_filename}{file_ext}"
-        
-        # Save the file
-        file_path = category_dir / filename
-        content = await file.read()
-        
-        with open(file_path, 'wb') as f:
-            f.write(content)
-        
-        return {
-            "message": "Content uploaded successfully",
-            "filename": filename,
-            "category": category,
-            "topic": topic,
-            "path": str(file_path),
-        }
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error uploading file: {str(e)}"
-        )
+
 

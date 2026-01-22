@@ -1,70 +1,29 @@
-[Fees & Payments]
-- Tuition fees are paid via the University Student Portal. Accepted payment methods include credit/debit card and bank transfer.
-- Payment Deadlines: Fall semester fees are due by September 15; Spring semester fees are due by February 1.
-- Late Payments: A 5% late fee is applied after the deadline. Students who miss the deadline must coordinate with the Bursar's Office to complete payment.
-- Payment Portal Access: Students can log in to the Student Portal at https://portal.university.edu using their student ID and password.
-- Refund Policy: Refund requests must be submitted within 30 days of payment. A processing fee of $50 applies to all refunds.
-- Payment Plans: Students experiencing financial difficulty can apply for a payment plan through the Bursar's Office. Payment plans allow splitting tuition into 3-4 monthly installments.
+Prasad V. Potluri Siddhartha Institute of Technology (PVPSIT) established in 1998 and sponsored by the Siddhartha Academy of General and Technical Education. ([pvpsiddhartha.ac.in][1])
 
-[Academic Programs]
-- The Computer Science department offers a course on Database Systems where students learn SQL (Structured Query Language) for managing relational databases.
-- The Database Systems course covers SQL fundamentals including SELECT queries, JOIN operations, aggregate functions, and transaction management.
-- The university uses PostgreSQL as its primary database system for student records, course management, and administrative operations.
-- Students can access SQL training resources through the library's online learning platform.
-- Advanced courses include Distributed Databases, Big Data Analytics, and Cloud Computing with Database Integration.
+The institute is approved by the All India Council for Technical Education and is permanently affiliated to Jawaharlal Nehru Technological University, Kakinada. ([pvpsiddhartha.ac.in][1])
 
-[Admissions]
-- Application Deadline: Applications for Fall semester admission must be submitted by March 1; Spring semester by October 1.
-- Required Documents: Official transcripts, standardized test scores (SAT/ACT), two letters of recommendation, and personal statement.
-- Application Fee: $75 (non-refundable). Fee waivers available for eligible applicants based on financial need.
-- International Students: Must provide proof of English proficiency (TOEFL/IELTS) and financial documentation.
-- Transfer Students: Must have a minimum GPA of 2.5 from previous institution. Maximum 60 credits can be transferred.
+PVPSIT has autonomous status and offers outcomes based education aligned with industrial requirements. ([pvpsiddhartha.ac.in][2])
 
-[Student Services]
-- Health Services: On-campus health center provides medical care, counseling, and wellness programs. Services are included in student fees.
-- Library Services: Main library open 24/7 during academic year. Offers study rooms, computer labs, and research assistance.
-- Career Center: Provides career counseling, resume reviews, mock interviews, and job placement assistance.
-- Disability Services: Accommodations available for students with documented disabilities. Contact the Office of Accessibility Services.
-- Housing: On-campus dormitories and apartments available. Housing application opens March 1 for Fall semester.
+The campus is located in Kanuru, Vijayawada, Andhra Pradesh, India, and covers an area of approximately 19.98 acres. ([pvpsiddhartha.ac.in][3])
 
-[Technical Support]
-- IT Help Desk: Available Monday-Friday, 8 AM - 5 PM. Contact: helpdesk@university.edu or call 123-456-7891.
-- Student Portal Issues: For login problems, password resets, or technical issues with the portal, contact IT Help Desk.
-- Email Services: All students receive a university email account (@university.edu) which must be used for official communication.
-- Wi-Fi Access: Campus-wide Wi-Fi available. Connect using your student ID credentials. Network name: UniversityWiFi.
-- Software Licenses: Students have free access to Microsoft Office, Adobe Creative Suite, and various programming IDEs through the university license.
+The institute is accredited with an A+ grade by the National Assessment and Accreditation Council and all undergraduate programmes are accredited by the National Board of Accreditation. ([pvpsiddhartha.ac.in][1])
 
-[Academic Policies]
-- Attendance Policy: Students must attend at least 75% of classes to be eligible for final exams.
-- Grading Scale: A (90-100), B (80-89), C (70-79), D (60-69), F (below 60).
-- Academic Probation: Students with GPA below 2.0 are placed on academic probation and must meet with an advisor.
-- Withdrawal Policy: Students can withdraw from courses until the 10th week of semester without academic penalty.
-- Grade Appeals: Must be filed within 30 days of grade posting. Contact the Office of the Registrar.
+The academic programmes include undergraduate Bachelor of Technology (B.Tech) courses in disciplines such as Computer Science and Engineering, Information Technology, Electronics & Communication Engineering, Electrical & Electronics Engineering, Mechanical Engineering, Civil Engineering, Data Science and Artificial Intelligence & Machine Learning. ([pvpsiddhartha.ac.in][4])
 
-[Contact Information]
-- Bursar's Office: bursar@university.edu, Phone: 123-456-7890
-- Office Hours: Monday-Friday, 9 AM - 4 PM
-- Admissions Office: admissions@university.edu, Phone: 123-456-7892
-- Registrar's Office: registrar@university.edu, Phone: 123-456-7893
-- Student Affairs: studentaffairs@university.edu, Phone: 123-456-7894
-- Campus Security: security@university.edu, Emergency: 911, Non-Emergency: 123-456-7895
+Postgraduate programmes include Master of Technology (M.Tech) with specialisations including Machine Design and Microwave & Communication Engineering, and a full-time Master of Business Administration (MBA) programme. ([pvpsiddhartha.ac.in][4])
 
-[Campus Facilities]
-- Main Library: Located in the center of campus, 5 floors with over 500,000 volumes.
-- Recreation Center: Gym, swimming pool, basketball courts, and fitness classes. Open daily 6 AM - 11 PM.
-- Dining Halls: Four dining halls across campus offering various meal plans. Meal plans required for students living on campus.
-- Student Center: Houses student organizations, meeting rooms, game rooms, and food court.
-- Parking: Student parking permits available for $200 per semester. Limited visitor parking in designated lots.
+Admission to undergraduate engineering programmes is based on state-level entrance examinations such as AP EAMCET and ECET, postgraduate engineering admissions use GATE and AP PGECET, and MBA admissions use AP ICET. ([pvpsiddhartha.ac.in][5])
 
-[Research Opportunities]
-- Undergraduate Research: Students can participate in faculty-led research projects for academic credit.
-- Summer Research Program: Paid research positions available during summer semester. Application deadline: February 15.
-- Research Symposium: Annual event where students present research findings. Held every April.
-- Grants: Research grants available for student projects up to $2,000. Apply through the Office of Research.
+B.Tech course fees are INR 70,000 per year under Convenor Quota and INR 2,10,000 per year under Management Quota. MBA programme fees are approximately INR 1.2 lakhs for the full duration and M.Tech fees are up to around INR 1.8 lakhs for the full duration. ([Collegedunia][6])
 
-[Financial Aid]
-- FAFSA Deadline: Submit Free Application for Federal Student Aid (FAFSA) by April 15 for Fall semester.
-- Scholarships: Merit-based and need-based scholarships available. Automatic consideration with admission application.
-- Work-Study: Federal work-study positions available on campus. Apply through Financial Aid Office.
-- Emergency Funds: Short-term emergency loans available for students facing unexpected financial hardship.
-- Scholarship Database: Access searchable scholarship database at portal.university.edu/scholarships
+Hostel facilities are available with rooms accommodating 2-4 students and monthly costs around INR 1,500 per student; girls' hostel is on/near campus and boys' hostel is located off campus. ([Collegedunia][7])
+
+The institute offers modern infrastructure including a central library, laboratories, auditorium, gymnasium, sports facilities, cafeteria and campus-wide Wi-Fi connectivity. ([Careers360][8])
+
+Placement records show a high percentage of students placed with packages ranging generally from around INR 3 LPA to higher offers, with some reports citing highest packages up to around INR 44 LPA and average packages around INR 3.5-4.5 LPA; top recruiters include companies such as TCS, Infosys, Wipro, Accenture and others. ([Shiksha][9])
+
+The institute provides a curriculum and syllabus structured to achieve defined program outcomes and educational objectives, prepared and approved by its Boards of Studies and Academic Council. ([pvpsiddhartha.ac.in][10])
+
+Contact details include the principal Dr. K. Sivaji Babu and administrative office phone numbers and email for general enquiries. ([pvpsiddhartha.ac.in][11])
+
+PVPSIT is recognized for academic excellence, a 100% ragging-free environment and a strong focus on employability through its training and placement cell. ([LinkedIn][12])

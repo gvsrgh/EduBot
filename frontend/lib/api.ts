@@ -48,11 +48,20 @@ class ApiClient {
           if (apiKeys.openai_key) {
             headers['X-OpenAI-Key'] = apiKeys.openai_key;
           }
+          if (apiKeys.openai_model) {
+            headers['X-OpenAI-Model'] = apiKeys.openai_model;
+          }
           if (apiKeys.gemini_key) {
             headers['X-Gemini-Key'] = apiKeys.gemini_key;
           }
+          if (apiKeys.gemini_model) {
+            headers['X-Gemini-Model'] = apiKeys.gemini_model;
+          }
           if (apiKeys.ollama_url) {
             headers['X-Ollama-Url'] = apiKeys.ollama_url;
+          }
+          if (apiKeys.ollama_model) {
+            headers['X-Ollama-Model'] = apiKeys.ollama_model;
           }
         } catch (e) {
           console.error('Failed to parse API keys from localStorage');

@@ -37,25 +37,17 @@ export default function SettingsPage() {
   
   const [formData, setFormData] = useState({
     ai_provider: 'ollama',
-    deny_words: '',
-    max_tokens: 2000,
-    temperature: '0.7',
   });
   
   const [apiKeys, setApiKeys] = useState({
     openai_key: '',
+    openai_model: 'gpt-4',
     gemini_key: '',
+    gemini_model: 'gemini-2.0-flash-exp',
     ollama_url: 'http://localhost:11434',
+    ollama_model: 'llama3.1:8b',
   });
   
-  const [uploadData, setUploadData] = useState({
-    category: 'academic',
-    topic: '',
-    file: null as File | null,
-  });
-  
-  const [uploadStatus, setUploadStatus] = useState('');
-  const [uploading, setUploading] = useState(false);
   const [ollamaTestStatus, setOllamaTestStatus] = useState('');
   const [testingOllama, setTestingOllama] = useState(false);
 
@@ -94,9 +86,6 @@ export default function SettingsPage() {
         setSettings(settingsData);
         setFormData({
           ai_provider: settingsData.ai_provider,
-          deny_words: settingsData.deny_words,
-          max_tokens: settingsData.max_tokens,
-          temperature: settingsData.temperature,
         });
       } else if (settingsResponse.status === 403) {
         setError('Access denied. Admin privileges with @pvpsiddhartha.ac.in domain required.');
@@ -178,56 +167,6 @@ export default function SettingsPage() {
       console.error(err);
     } finally {
       setSaving(false);
-    }
-  };
-  
-  const handleFileUpload = async () => {
-    if (!uploadData.file || !uploadData.topic.trim()) {
-      setUploadStatus('Please select a file and enter a topic title');
-      return;
-    }
-    
-    setUploading(true);
-    setUploadStatus('');
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-      
-      const formData = new FormData();
-      formData.append('file', uploadData.file);
-      formData.append('category', uploadData.category);
-      formData.append('topic', uploadData.topic);
-      
-      const response = await fetch(`${API_BASE}/settings/upload-content`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setUploadStatus(`✓ Successfully uploaded: ${result.filename}`);
-        setUploadData({ category: 'academic', topic: '', file: null });
-        // Reset file input
-        const fileInput = document.getElementById('content-file') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
-      } else if (response.status === 403) {
-        setUploadStatus('Access denied. Admin privileges required.');
-      } else {
-        const errorData = await response.json();
-        setUploadStatus(`Error: ${errorData.detail || 'Upload failed'}`);
-      }
-    } catch (err) {
-      setUploadStatus('An error occurred during upload');
-      console.error(err);
-    } finally {
-      setUploading(false);
     }
   };
   
@@ -414,63 +353,112 @@ export default function SettingsPage() {
           
           {/* Conditional API Key Inputs */}
           {formData.ai_provider === 'openai' && (
-            <div className={styles.formGroup}>
-              <label htmlFor="openai_key">OpenAI API Key</label>
-              <input
-                type="password"
-                id="openai_key"
-                value={apiKeys.openai_key}
-                onChange={(e) => {
-                  const newKeys = { ...apiKeys, openai_key: e.target.value };
-                  setApiKeys(newKeys);
-                  localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
-                }}
-                placeholder="sk-..." 
-                className={styles.input}
-              />
-              <small className={styles.hint}>
-                Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">OpenAI Platform</a>
-              </small>
-              <button
-                type="button"
-                onClick={testOpenAIConnection}
-                disabled={loading || !apiKeys.openai_key}
-                className={styles.testButton}
-                style={{ marginTop: '8px' }}
-              >
-                {loading ? 'Testing...' : '🔍 Test Connection'}
-              </button>
-            </div>
+            <>
+              <div className={styles.formGroup}>
+                <label htmlFor="openai_key">OpenAI API Key</label>
+                <input
+                  type="password"
+                  id="openai_key"
+                  value={apiKeys.openai_key}
+                  onChange={(e) => {
+                    const newKeys = { ...apiKeys, openai_key: e.target.value };
+                    setApiKeys(newKeys);
+                    localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
+                  }}
+                  placeholder="sk-..." 
+                  className={styles.input}
+                />
+                <small className={styles.hint}>
+                  Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">OpenAI Platform</a>
+                </small>
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="openai_model">OpenAI Model</label>
+                <select
+                  id="openai_model"
+                  value={apiKeys.openai_model}
+                  onChange={(e) => {
+                    const newKeys = { ...apiKeys, openai_model: e.target.value };
+                    setApiKeys(newKeys);
+                    localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
+                  }}
+                  className={styles.select}
+                >
+                  <option value="gpt-4">GPT-4</option>
+                  <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                  <option value="gpt-4o">GPT-4o</option>
+                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                </select>
+                <small className={styles.hint}>
+                  Select the OpenAI model to use
+                </small>
+              </div>
+              <div className={styles.formGroup}>
+                <button
+                  type="button"
+                  onClick={testOpenAIConnection}
+                  disabled={loading || !apiKeys.openai_key}
+                  className={styles.testButton}
+                >
+                  {loading ? 'Testing...' : '🔍 Test Connection'}
+                </button>
+              </div>
+            </>
           )}
           
           {formData.ai_provider === 'gemini' && (
-            <div className={styles.formGroup}>
-              <label htmlFor="gemini_key">Google Gemini API Key</label>
-              <input
-                type="password"
-                id="gemini_key"
-                value={apiKeys.gemini_key}
-                onChange={(e) => {
-                  const newKeys = { ...apiKeys, gemini_key: e.target.value };
-                  setApiKeys(newKeys);
-                  localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
-                }}
-                placeholder="AI..." 
-                className={styles.input}
-              />
-              <small className={styles.hint}>
-                Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>
-              </small>
-              <button
-                type="button"
-                onClick={testGeminiConnection}
-                disabled={loading || !apiKeys.gemini_key}
-                className={styles.testButton}
-                style={{ marginTop: '8px' }}
-              >
-                {loading ? 'Testing...' : '🔍 Test Connection'}
-              </button>
-            </div>
+            <>
+              <div className={styles.formGroup}>
+                <label htmlFor="gemini_key">Google Gemini API Key</label>
+                <input
+                  type="password"
+                  id="gemini_key"
+                  value={apiKeys.gemini_key}
+                  onChange={(e) => {
+                    const newKeys = { ...apiKeys, gemini_key: e.target.value };
+                    setApiKeys(newKeys);
+                    localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
+                  }}
+                  placeholder="AI..." 
+                  className={styles.input}
+                />
+                <small className={styles.hint}>
+                  Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>
+                </small>
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="gemini_model">Gemini Model</label>
+                <select
+                  id="gemini_model"
+                  value={apiKeys.gemini_model}
+                  onChange={(e) => {
+                    const newKeys = { ...apiKeys, gemini_model: e.target.value };
+                    setApiKeys(newKeys);
+                    localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
+                  }}
+                  className={styles.select}
+                >
+                  <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  <option value="gemini-pro">Gemini Pro</option>
+                </select>
+                <small className={styles.hint}>
+                  Select the Gemini model to use
+                </small>
+              </div>
+              <div className={styles.formGroup}>
+                <button
+                  type="button"
+                  onClick={testGeminiConnection}
+                  disabled={loading || !apiKeys.gemini_key}
+                  className={styles.testButton}
+                >
+                  {loading ? 'Testing...' : '🔍 Test Connection'}
+                </button>
+              </div>
+            </>
           )}
           
           {formData.ai_provider === 'ollama' && (
@@ -491,6 +479,25 @@ export default function SettingsPage() {
                 />
                 <small className={styles.hint}>
                   URL of your local Ollama instance. Default: http://localhost:11434
+                </small>
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label htmlFor="ollama_model">Ollama Model</label>
+                <input
+                  type="text"
+                  id="ollama_model"
+                  value={apiKeys.ollama_model}
+                  onChange={(e) => {
+                    const newKeys = { ...apiKeys, ollama_model: e.target.value };
+                    setApiKeys(newKeys);
+                    localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
+                  }}
+                  placeholder="llama3.1:8b" 
+                  className={styles.input}
+                />
+                <small className={styles.hint}>
+                  Model name (e.g., llama3.1:8b, llama2, mistral). Use 'ollama list' to see available models.
                 </small>
               </div>
               
@@ -525,160 +532,6 @@ export default function SettingsPage() {
                 </ul>
             </div>
           )}
-        </section>
-
-        {/* Content Management Section - Only for @pvpsiddhartha.ac.in */}
-        {user?.email?.endsWith('@pvpsiddhartha.ac.in') && (
-          <section className={styles.section}>
-            <h2>Content Management</h2>
-            <p className={styles.description}>
-              Upload university content to enhance the chatbot's knowledge base.
-            </p>
-            
-            <div className={styles.formGroup}>
-              <label htmlFor="category">Content Category</label>
-              <select
-                id="category"
-                value={uploadData.category}
-                onChange={(e) => setUploadData({ ...uploadData, category: e.target.value })}
-                className={styles.select}
-              >
-                <option value="academic">Academic Information</option>
-                <option value="administrative">Administrative Procedures</option>
-                <option value="events">Events & Activities</option>
-              </select>
-              <small className={styles.hint}>
-                Select the category that best describes your content
-              </small>
-            </div>
-            
-            <div className={styles.formGroup}>
-              <label htmlFor="topic">Topic Title</label>
-              <input
-                type="text"
-                id="topic"
-                value={uploadData.topic}
-                onChange={(e) => setUploadData({ ...uploadData, topic: e.target.value })}
-                placeholder="e.g., Admission Guidelines 2024"
-                className={styles.input}
-              />
-              <small className={styles.hint}>
-                Provide a descriptive title for this content
-              </small>
-            </div>
-            
-            <div className={styles.formGroup}>
-              <label htmlFor="file">Upload File</label>
-              <input
-                type="file"
-                id="file"
-                onChange={(e) => setUploadData({ ...uploadData, file: e.target.files?.[0] || null })}
-                accept=".txt,.pdf,.doc,.docx"
-                className={styles.fileInput}
-              />
-              <small className={styles.hint}>
-                Supported formats: TXT, PDF, DOC, DOCX (Max 10MB)
-              </small>
-            </div>
-            
-            <button
-              type="button"
-              onClick={handleFileUpload}
-              disabled={uploading || !uploadData.file || !uploadData.topic.trim()}
-              className={styles.uploadButton}
-            >
-              {uploading ? '⏳ Uploading...' : '📤 Upload Content'}
-            </button>
-            
-            {uploadStatus && (
-              <div className={uploadStatus.includes('success') ? styles.success : styles.error}>
-                {uploadStatus}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Content Moderation Section - Only for @pvpsiddhartha.ac.in */}
-        {user?.email?.endsWith('@pvpsiddhartha.ac.in') && (
-          <section className={styles.section}>
-            <h2>Content Moderation</h2>
-            <p className={styles.description}>
-              Configure content filtering and moderation settings.
-            </p>
-            
-            <div className={styles.formGroup}>
-              <label htmlFor="deny_words">Blocked Words/Phrases</label>
-              <textarea
-                id="deny_words"
-                value={formData.deny_words}
-                onChange={(e) => setFormData({ ...formData, deny_words: e.target.value })}
-                placeholder="Enter comma-separated words or phrases to block (e.g., spam, inappropriate, offensive)"
-                className={styles.textarea}
-                rows={4}
-              />
-              <small className={styles.hint}>
-                Comma-separated list. Messages containing these words will be rejected.
-              </small>
-            </div>
-          </section>
-        )}
-
-        {/* Model Parameters Section */}
-        <section className={styles.section}>
-          <h2>Model Parameters</h2>
-          <p className={styles.description}>
-            Fine-tune the AI model's behavior and response characteristics.
-          </p>
-          
-          <div className={styles.formGroup}>
-            <label htmlFor="max_tokens">Maximum Tokens</label>
-            <input
-              type="number"
-              id="max_tokens"
-              value={formData.max_tokens}
-              onChange={(e) => setFormData({ ...formData, max_tokens: parseInt(e.target.value) })}
-              min={100}
-              max={4000}
-              className={styles.input}
-            />
-            <small className={styles.hint}>
-              Maximum length of generated responses (100-4000). Higher values allow longer responses.
-            </small>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="temperature">Temperature</label>
-            <div className={styles.temperatureControl}>
-              <input
-                type="range"
-                id="temperature"
-                value={parseFloat(formData.temperature)}
-                onChange={(e) => setFormData({ ...formData, temperature: e.target.value })}
-                min={0}
-                max={1}
-                step={0.1}
-                className={styles.slider}
-              />
-              <input
-                type="number"
-                value={formData.temperature}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  if (val >= 0 && val <= 1) {
-                    setFormData({ ...formData, temperature: e.target.value });
-                  }
-                }}
-                min={0}
-                max={1}
-                step={0.1}
-                className={styles.numberInput}
-              />
-            </div>
-            <small className={styles.hint}>
-              Controls randomness (0-1). Lower values (0.3-0.5) = more focused and deterministic. 
-              Higher values (0.7-1.0) = more creative and varied.
-            </small>
-          </div>
         </section>
 
         {/* Last Updated Info */}
