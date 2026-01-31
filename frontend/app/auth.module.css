@@ -218,3 +218,111 @@
   border: 1px solid var(--error-border);
   border-radius: var(--radius-sm);
 }
+
+/* Success message */
+.success {
+  color: #166534;
+  font-size: 14px;
+  padding: 10px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+/* OTP Input Styles */
+.otpContainer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.otpInput {
+  width: 50px;
+  height: 60px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  border: 2px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  font-family: 'Courier New', monospace;
+}
+
+.otpInput:focus {
+  outline: none;
+  border-color: #667eea;
+  background: var(--bg-hover);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  transform: scale(1.05);
+}
+
+.otpInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Resend OTP styles */
+.resendContainer {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.resendText {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.timerText {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.resendButton {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.resendButton:hover {
+  color: #764ba2;
+}
+
+.resendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Back button */
+.backButton {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 12px;
+}
+
+.backButton:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-accent);
+  color: var(--text-primary);
+}
+
+.backButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
