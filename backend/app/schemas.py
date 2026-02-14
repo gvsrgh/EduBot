@@ -114,3 +114,29 @@ class TestConnectionRequest(BaseModel):
     provider: str
     api_key: Optional[str] = None
     ollama_url: Optional[str] = None
+
+
+# OTP Schemas
+class SendOTPRequest(BaseModel):
+    """Request to send OTP."""
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=6)
+
+
+class SendOTPResponse(BaseModel):
+    """Response after sending OTP."""
+    success: bool
+    message: str
+
+
+class VerifyOTPRequest(BaseModel):
+    """Request to verify OTP."""
+    email: EmailStr
+    otp: str = Field(..., min_length=6, max_length=6)
+
+
+class VerifyOTPResponse(BaseModel):
+    """Response after verifying OTP."""
+    success: bool
+    message: str
