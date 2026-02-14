@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_session
 from app.db.models import User
-from app.schemas import UserRegister, UserLogin, Token, UserResponse
+from app.schemas import (
+    UserRegister, UserLogin, Token, UserResponse,
+    SendOTPRequest, SendOTPResponse, VerifyOTPRequest, VerifyOTPResponse
+)
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
+from app.email_service import send_otp_email, verify_otp, send_welcome_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -97,6 +101,99 @@ async def login(
     access_token = create_access_token(data={"sub": str(user.id)})
     
     user_response = UserResponse.model_validate(user)
+    
+    return Token(access_token=access_token, user=user_response)
+
+
+@router.post("/send-otp", response_model=SendOTPResponse)
+async def send_otp(
+    data: SendOTPRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Send OTP to email for verification before registration."""
+    
+    # Check email domain
+    allowed_domains = ['pvpsit.ac.in', 'pvpsiddhartha.ac.in']
+    email_domain = data.email.split('@')[-1]
+    if email_domain not in allowed_domains:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only @pvpsit.ac.in and @pvpsiddhartha.ac.in email addresses are allowed",
+        )
+    
+    # Check if username or email already exists
+    result = await session.execute(
+        select(User).where(
+            (User.username == data.username) | (User.email == data.email)
+        )
+    )
+    existing_user = result.scalar_one_or_none()
+    
+    if existing_user:
+        if existing_user.username == data.username:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already registered",
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
+    
+    # Send OTP email (password is stored with OTP)
+    sent = send_otp_email(data.email, data.username, data.password)
+    
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send verification email. Please try again.",
+        )
+    
+    return SendOTPResponse(success=True, message="Verification code sent to your email")
+
+
+@router.post("/verify-otp", response_model=Token, status_code=status.HTTP_201_CREATED)
+async def verify_otp_and_register(
+    data: VerifyOTPRequest,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_session),
+):
+    """Verify OTP and complete registration."""
+    
+    # Verify OTP and get stored data
+    stored_data = verify_otp(data.email, data.otp)
+    
+    if not stored_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code. Please request a new one.",
+        )
+    
+    username = stored_data['username']
+    password = stored_data['password']
+    
+    # Create new user
+    is_admin = data.email.endswith('@pvpsiddhartha.ac.in')
+    hashed_pw = hash_password(password)
+    new_user = User(
+        email=data.email,
+        username=username,
+        hashed_password=hashed_pw,
+        is_admin=is_admin,
+    )
+    
+    session.add(new_user)
+    await session.commit()
+    await session.refresh(new_user)
+    
+    # Send welcome email in background
+    background_tasks.add_task(send_welcome_email, data.email, username)
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": str(new_user.id)})
+    
+    user_response = UserResponse.model_validate(new_user)
     
     return Token(access_token=access_token, user=user_response)
 

@@ -89,6 +89,20 @@ class ApiClient {
     });
   }
 
+  async sendOTP(data: { email: string; username: string; password: string }): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/auth/send-otp', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async verifyOTP(data: { email: string; otp: string }): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async login(data: LoginRequest): Promise<AuthResponse> {
     return this.request<AuthResponse>('/auth/login', {
       method: 'POST',
