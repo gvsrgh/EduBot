@@ -6,9 +6,17 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
-# Database Configuration - Local SQLite only
-DATABASE_URL = "sqlite+aiosqlite:///./edubot.db"
-DATABASE_URL_SYNC = "sqlite:///./edubot.db"
+# Database Configuration - PostgreSQL Only
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError(
+        "DATABASE_URL environment variable is required. "
+        "Please set it in your .env file with your PostgreSQL connection string."
+    )
+
+# For sync operations (if needed)
+DATABASE_URL_SYNC = os.getenv("DATABASE_URL_SYNC")
 
 # JWT Configuration
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
