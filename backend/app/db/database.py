@@ -1,17 +1,20 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+import os
 import ssl
 from app.config import DATABASE_URL
 
 # Remove query parameters from URL that asyncpg doesn't support in URL
 clean_url = DATABASE_URL.split('?')[0]
 
-# Create SSL context for secure connection to PostgreSQL
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+# Build engine connect_args based on DATABASE_SSL env var
+# Set DATABASE_SSL=false to disable SSL (e.g., for local dev)
+connect_args = {}
+if os.getenv("DATABASE_SSL", "true").lower() != "false":
+    ssl_context = ssl.create_default_context()
+    connect_args["ssl"] = ssl_context
 
-# PostgreSQL async engine with connection pooling and SSL
+# PostgreSQL async engine with connection pooling
 engine = create_async_engine(
     clean_url,
     echo=False,
@@ -19,9 +22,7 @@ engine = create_async_engine(
     pool_size=10,
     max_overflow=20,
     pool_recycle=3600,  # Recycle connections after 1 hour
-    connect_args={
-        "ssl": ssl_context,
-    }
+    connect_args=connect_args,
 )
 
 # Create async session factory

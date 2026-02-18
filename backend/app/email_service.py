@@ -1,4 +1,5 @@
 import smtplib
+import hmac
 import random
 import string
 from email.mime.text import MIMEText
@@ -243,12 +244,12 @@ def send_email(to_email: str, subject: str, html_content: str) -> bool:
         return False
 
 
-def store_otp(email: str, otp: str, username: str, password: str) -> None:
-    """Store OTP with expiration time and password."""
+def store_otp(email: str, otp: str, username: str, hashed_password: str) -> None:
+    """Store OTP with expiration time and pre-hashed password."""
     otp_store[email] = {
         'otp': otp,
         'username': username,
-        'password': password,
+        'hashed_password': hashed_password,
         'expires_at': datetime.now() + timedelta(minutes=10)
     }
 
@@ -264,21 +265,21 @@ def verify_otp(email: str, otp: str) -> Optional[dict]:
         del otp_store[email]
         return None
     
-    if stored['otp'] != otp:
+    if not hmac.compare_digest(stored['otp'], otp):
         return None
     
     data = {
         'username': stored['username'],
-        'password': stored['password']
+        'hashed_password': stored['hashed_password']
     }
     del otp_store[email]  # OTP is single use
     return data
 
 
-def send_otp_email(email: str, username: str, password: str) -> bool:
+def send_otp_email(email: str, username: str, hashed_password: str) -> bool:
     """Generate, store and send OTP email."""
     otp = generate_otp()
-    store_otp(email, otp, username, password)
+    store_otp(email, otp, username, hashed_password)
     
     html_content = get_otp_email_template(otp, username)
     return send_email(email, "🔐 Verify Your Email - EduBot+", html_content)

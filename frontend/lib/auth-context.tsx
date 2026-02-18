@@ -8,6 +8,7 @@ interface AuthContextType {
   user: { email: string; username: string; is_admin: boolean } | null;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
+  loginWithToken: (token: string, user: { email: string; username: string; is_admin: boolean }) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -25,7 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userData = localStorage.getItem('user');
     
     if (token && userData) {
-      setUser(JSON.parse(userData));
+      try {
+        setUser(JSON.parse(userData));
+      } catch {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        apiClient.setToken(null);
+        setUser(null);
+      }
     }
     setLoading(false);
   }, []);
@@ -64,8 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/chat');
   };
 
+  const loginWithToken = (token: string, userData: { email: string; username: string; is_admin: boolean }) => {
+    apiClient.setToken(token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, loginWithToken, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

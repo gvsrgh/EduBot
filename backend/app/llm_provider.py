@@ -213,9 +213,22 @@ class LLMProvider:
             non_tool_models = ['gemma', 'phi', 'tinyllama', 'stablelm']
             return not any(nm in model for nm in non_tool_models)
         elif provider == "auto":
-            # Check the actual provider that would be selected
-            return True  # Assume auto will pick a tool-capable model
+            # Resolve the actual provider that would be selected and check its tool support
+            resolved_provider = self._resolve_auto_provider()
+            if resolved_provider == "ollama":
+                model = self._api_keys.get('ollama_model', '').lower()
+                non_tool_models = ['gemma', 'phi', 'tinyllama', 'stablelm']
+                return not any(nm in model for nm in non_tool_models)
+            return True  # OpenAI and Gemini support tools
         return False
+    
+    def _resolve_auto_provider(self) -> str:
+        """Determine which provider auto-select would pick without creating an LLM."""
+        if os.getenv('OPENAI_API_KEY') or self._api_keys.get('openai'):
+            return "openai"
+        if os.getenv('GOOGLE_API_KEY') or self._api_keys.get('gemini'):
+            return "gemini"
+        return "ollama"
     
     def get_available_providers(self) -> dict[str, bool]:
         """Check which providers are available based on configuration."""

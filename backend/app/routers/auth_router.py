@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
+import uuid
 from app.db.database import get_session
 from app.db.models import User
 from app.schemas import (
@@ -12,6 +14,18 @@ from app.email_service import send_otp_email, verify_otp, send_welcome_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# Shared domain validation
+ALLOWED_DOMAINS = ['pvpsit.ac.in', 'pvpsiddhartha.ac.in']
+
+def validate_email_domain(email: str) -> None:
+    """Validate that the email belongs to an allowed domain."""
+    email_domain = email.split('@')[-1]
+    if email_domain not in ALLOWED_DOMAINS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only @pvpsit.ac.in and @pvpsiddhartha.ac.in email addresses are allowed",
+        )
+
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(
@@ -21,13 +35,7 @@ async def register(
     """Register a new user."""
     
     # Check email domain
-    allowed_domains = ['pvpsit.ac.in', 'pvpsiddhartha.ac.in']
-    email_domain = user_data.email.split('@')[-1]
-    if email_domain not in allowed_domains:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Only @pvpsit.ac.in and @pvpsiddhartha.ac.in email addresses are allowed",
-        )
+    validate_email_domain(user_data.email)
     
     # Check if username or email already exists
     result = await session.execute(
@@ -61,7 +69,14 @@ async def register(
     )
     
     session.add(new_user)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already registered",
+        )
     await session.refresh(new_user)
     
     # Create access token
@@ -113,13 +128,7 @@ async def send_otp(
     """Send OTP to email for verification before registration."""
     
     # Check email domain
-    allowed_domains = ['pvpsit.ac.in', 'pvpsiddhartha.ac.in']
-    email_domain = data.email.split('@')[-1]
-    if email_domain not in allowed_domains:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only @pvpsit.ac.in and @pvpsiddhartha.ac.in email addresses are allowed",
-        )
+    validate_email_domain(data.email)
     
     # Check if username or email already exists
     result = await session.execute(
@@ -141,8 +150,9 @@ async def send_otp(
                 detail="Email already registered",
             )
     
-    # Send OTP email (password is stored with OTP)
-    sent = send_otp_email(data.email, data.username, data.password)
+    # Send OTP email (password is hashed before storing with OTP)
+    hashed_pw = hash_password(data.password)
+    sent = send_otp_email(data.email, data.username, hashed_pw)
     
     if not sent:
         raise HTTPException(
@@ -171,11 +181,10 @@ async def verify_otp_and_register(
         )
     
     username = stored_data['username']
-    password = stored_data['password']
+    hashed_pw = stored_data['hashed_password']
     
-    # Create new user
+    # Create new user with pre-hashed password
     is_admin = data.email.endswith('@pvpsiddhartha.ac.in')
-    hashed_pw = hash_password(password)
     new_user = User(
         email=data.email,
         username=username,
@@ -184,7 +193,14 @@ async def verify_otp_and_register(
     )
     
     session.add(new_user)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already registered",
+        )
     await session.refresh(new_user)
     
     # Send welcome email in background
@@ -206,7 +222,7 @@ async def get_current_user_info(
     """Get current user information."""
     
     result = await session.execute(
-        select(User).where(User.id == current_user["user_id"])
+        select(User).where(User.id == uuid.UUID(current_user["user_id"]))
     )
     user = result.scalar_one_or_none()
     

@@ -60,6 +60,8 @@ export default function ChatPage() {
       if (response.success) {
         setChatId(response.chat_id);
         setMessages(prev => [...prev, { role: 'assistant', content: response.message }]);
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I was unable to process your request. Please try again.' }]);
       }
     } catch (err) {
       setMessages(prev => [

@@ -15,8 +15,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
 
-from app.config import DATABASE_URL_SYNC
-from app.llm_provider import get_current_llm
+from app.llm_provider import get_current_llm, llm_provider
 from app.tools import available_tools
 
 
@@ -41,8 +40,6 @@ def agent_node(state: AgentState) -> AgentState:
     llm = get_current_llm(temperature=0.3)
     
     # Check if model supports tools
-    from app.llm_provider import llm_provider
-    
     if llm_provider.supports_tools():
         print("Using LLM with tool support")
         llm_with_tools = llm.bind_tools(available_tools)
@@ -111,7 +108,6 @@ def should_continue(state: AgentState) -> Literal["tools", "end"]:
     last_message = state["messages"][-1]
     
     # Check if model supports tools first
-    from app.llm_provider import llm_provider
     if not llm_provider.supports_tools():
         print("NO: Model doesn't support tools, ending")
         return "end"
