@@ -1,211 +1,305 @@
-# EduBot - AI University Assistant
+# EduBot+ — AI University Assistant
 
-An intelligent chatbot that helps university students get answers about academic calendars, university information, and educational resources. The system uses AI language models to provide conversational responses powered by local LLMs (Ollama) or cloud providers (OpenAI/Gemini).
+> Intelligent chatbot for university students powered by LangGraph agents, multi-LLM support, and a RAG knowledge base.
 
-## What Does This Project Do?
+---
 
-EduBot is a web-based chatbot application designed for university students and staff. It provides:
+## 📋 Project Status
 
-- **Intelligent Q&A**: Ask questions about university schedules, policies, and resources
-- **Multi-AI Support**: Choose between local AI (Ollama) or cloud services (OpenAI, Gemini)
-- **Chat History**: Keep track of all your conversations
-- **Role-Based Access**: Different features for students and administrators
-- **Knowledge Base**: Pre-loaded with university information (academic calendar, policies, etc.)
+> Last updated: February 2026 — tracked against the published paper (IC-ECBE 2026: *EduBot+: An NLP-Powered Chatbot for Multi-Domain Student Support*).
 
-## Prerequisites
+### Legend
+| Badge | Meaning |
+|---|---|
+| ✅ Done | Fully implemented and working |
+| ⚠️ Partial | Implemented but incomplete or simplified |
+| ❌ Pending | Not yet implemented |
 
-Before you start, make sure you have:
+---
 
-- **Python 3.11 or higher** - For the backend server
-- **Node.js 18 or higher** - For the frontend website
-- **Ollama** (recommended) - For running AI models locally
+### 🤖 LLM & AI
 
-## Quick Start Guide
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 1 | Multi-LLM Provider Support (GPT-4, Gemini, Ollama, **DeepSeek**) | ✅ | OpenAI, Gemini, Ollama, DeepSeek fully wired with `auto` fallback chain. Paper specifies GPT-4, Gemini, Ollama. |
+| 2 | Agent-based Architecture (LangGraph) | ✅ | `StateGraph` + tool nodes in `graph.py`. Paper: ReAct-inspired autonomous decision cycle. |
+| 3 | Retrieval-Augmented Generation (RAG) | ⚠️ | Keyword/text search only. Paper requires **vector embeddings** (`all-MiniLM-L6-v2`) + cosine similarity retrieval (target: 0.72–0.94). |
+| 4 | Semantic Similarity Search | ❌ | No vector DB. Paper: FAISS / ChromaDB / Pinecone, top-k=3–5 chunks, threshold ≥ 0.70. |
+| 5 | Domain-aware Query Routing | ⚠️ | Routes to Academic / Administrative / Educational. Paper defines **3 domains: Administrative, Financial, Educational** — Financial is missing as a standalone domain. |
+| 6 | Multi-hop Reasoning | ❌ | Not implemented. Paper: parallel retrieval across domains + result aggregation (e.g. "refund policy if I drop a course"). |
 
-### Step 1: Install Ollama (Recommended)
+---
 
-1. Download Ollama from [ollama.ai](https://ollama.ai)
-2. Install it on your computer
-3. Open a terminal and run:
+### 📄 Document Management
+
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 7 | Faculty Document Upload | ⚠️ | Only `.txt`. Paper requires **PDF, DOCX, TXT**. Scanned PDFs need OCR (Tesseract / Azure CV). |
+| 8 | Document Processing → Vector Embeddings | ❌ | No pipeline. Paper: extract text → 500–1000 token chunks (10% overlap) → embed with `all-MiniLM-L6-v2` → store in vector DB. |
+| 9 | Automatic Document Indexing | ❌ | No indexing. Paper: vector DB stores embeddings; PostgreSQL stores filename, upload date, type with FK to vector IDs. |
+
+---
+
+### ⚙️ Backend
+
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 10 | FastAPI Backend | ✅ | Async routers, middleware, dependency injection fully implemented. |
+| 11 | PostgreSQL Database | ⚠️ | Currently SQLite. Paper explicitly uses **PostgreSQL + Asyncpg + SQLAlchemy ORM**. |
+| 12 | Conversation History | ⚠️ | Messages saved to DB per chat. Paper requires **LangGraph PostgreSQL checkpoints** so sessions restore seamlessly across logins. |
+
+---
+
+### 🔐 Authentication
+
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 13 | OTP Authentication | ✅ | Email OTP via SMTP. Paper: code expires after login or 10 min. Guest mode (no account) also supported. |
+| 14 | JWT Token Security | ✅ | HS256 JWT, configurable expiry via `.env`. |
+| 15 | Role-based Access Control | ✅ | Admin: `@pvpsiddhartha.ac.in`. Student: `@pvpsit.ac.in`. Guest: read-only chat. |
+
+---
+
+### 🖥️ Frontend
+
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 16 | Next.js Responsive Web Interface | ✅ | Next.js 15, CSS Modules, mobile-friendly. |
+| 17 | Chat Interface | ✅ | Streaming responses, history sidebar, rename/delete. Paper: responses include source citations ("According to…"). |
+| 18 | Settings Page | ⚠️ | Provider / model / API key config done. **Forgot-password flow** and **document expiry management** missing. |
+
+---
+
+### 🚀 Deployment
+
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 19 | Docker Containerization | ❌ | No `Dockerfile` or `docker-compose.yml`. Paper: separate containers for backend, frontend, PostgreSQL, and vector DB. |
+| 20 | Production-ready Scaling | ❌ | Local dev only. Paper: stateless API + load balancer for horizontal scaling. |
+
+---
+
+### 🌐 Data & Automation
+
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 21 | Web Scraper — Official College Website | ❌ | **New (professor suggestion).** Automatically fetch and sync data (notices, calendar, policies) from the official college website into the backend knowledge base. Assigned to **G. Venkata Sai Ram**. |
+
+---
+
+### 📊 Overall Progress
+
+| Category | ✅ Done | ⚠️ Partial | ❌ Pending |
+|---|---|---|---|
+| LLM & AI | 2 | 2 | 2 |
+| Document Management | 0 | 1 | 2 |
+| Backend | 1 | 2 | 0 |
+| Authentication | 3 | 0 | 0 |
+| Frontend | 2 | 1 | 0 |
+| Deployment | 0 | 0 | 2 |
+| Data & Automation | 0 | 0 | 1 |
+| **Total** | **8 / 21** | **6 / 21** | **7 / 21** |
+
+---
+
+## 👥 Team Assignments
+
+| Member | Responsible For |
+|---|---|
+| **G. Venkata Sai Ram** | #1 Multi-LLM, #2 LangGraph Agent, #3 RAG, #19 Docker, #20 Production config, **#21 Web Scraper** |
+| **Sreekar** | #8 Embedding pipeline, #9 Document indexing, #16 Frontend, #17 Chat UI, #18 Settings page |
+| **Chandu** | #4 Semantic search, #6 Multi-hop reasoning, #10 FastAPI, #11 PostgreSQL migration, #12 Conversation history |
+| **Dheeraj** | #5 Query routing (+ Financial domain), #7 Document upload (PDF/DOCX/OCR), #13 OTP auth, #14 JWT, #15 RBAC |
+
+---
+
+## 🏗️ What Needs to Be Built Next
+
+### High Priority
+
+1. **Vector Embeddings + Semantic Search** (`#3`, `#4`, `#8`, `#9`) — *Sreekar + Chandu*
+   - Add `sentence-transformers`, `faiss-cpu` (or `chromadb`) to `requirements.txt`
+   - Embed documents with `all-MiniLM-L6-v2` during upload
+   - Chunk at 500–1000 tokens with 10% overlap
+   - Store embeddings in vector DB; metadata (filename, date, type, vector ID) in PostgreSQL
+   - Replace keyword search in `tools.py` with cosine similarity retrieval (top-k=3–5, threshold ≥ 0.70)
+
+2. **PDF / DOCX Upload + OCR** (`#7`, `#8`) — *Dheeraj + Sreekar*
+   - Add `pypdf2`, `python-docx`, `pytesseract` to `requirements.txt`
+   - Extend `settings_router.py` to accept `.pdf`, `.docx`
+   - OCR path via Tesseract for scanned PDFs
+   - Feed extracted text into the embedding pipeline on upload
+
+3. **Financial Domain** (`#5`) — *Dheeraj*
+   - Add `Financial` as a 3rd retrieval domain (tuition, fees, billing, financial aid)
+   - Create `data/Financial/` folder seeded with financial services content
+   - Update `tools.py` routing to classify and route financial queries separately
+
+4. **Web Scraper — College Website** (`#21`) — *G. Venkata Sai Ram*
+   - Scrape official PVP Siddhartha website (notices, academic calendar, policies)
+   - Scheduled periodic sync (APScheduler / cron) to keep knowledge base current
+   - Feed scraped content through the embedding pipeline into the vector DB
+
+5. **PostgreSQL Migration** (`#11`) — *Chandu*
+   - Update `DATABASE_URL` in `.env` to a Postgres connection string
+   - Confirm `asyncpg` is in `requirements.txt` (already present)
+   - Run `alembic upgrade head`
+
+6. **Docker** (`#19`, `#20`) — *G. Venkata Sai Ram*
+   - `Dockerfile` for backend (Python 3.11 + uvicorn)
+   - `Dockerfile` for frontend (Node 18 + `next build`)
+   - `docker-compose.yml`: backend + frontend + PostgreSQL + vector DB containers
+
+### Medium Priority
+
+7. **LangGraph Session Checkpoints** (`#12`) — *Chandu*
+   - Configure `PostgresSaver` as LangGraph checkpoint backend
+   - Resume full conversation context across logins
+
+8. **Forgot Password Flow** (`#18`) — *Sreekar*
+   - `POST /auth/forgot-password` → send reset OTP
+   - Add `frontend/app/reset-password/` page
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- Ollama *(optional — for local AI)*
+
+### 1 — Clone & install
 
 ```bash
-ollama pull llama3.1:8b
-```
-
-This downloads an AI model to your computer.
-
-### Step 2: Setup Backend
-
-Open a terminal and run:
-
-```bash
+# Backend
 cd backend
 pip install -r requirements.txt
-```
 
-This installs all the Python libraries needed for the backend.
-
-### Step 3: Setup Frontend
-
-Open a new terminal and run:
-
-```bash
-cd frontend
+# Frontend
+cd ../frontend
 npm install
 ```
 
-This installs all the Node.js libraries needed for the frontend.
+### 2 — Configure environment
 
-### Step 4: Start the Application
-
-**Terminal 1 - Start the Backend:**
-
-```bash
-cd backend
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-**Terminal 2 - Start the Frontend:**
-
-```bash
-cd frontend
-npm run dev
-```
-
-### Step 5: Open the Application
-
-Open your web browser and go to:
-
-- **Main App**: `http://localhost:3000`
-- **API Documentation**: `http://localhost:8000/docs`
-
-## Test Account
-
-You can log in with these credentials:
-
-- **Email**: `test@pvpsiddhartha.ac.in`
-- **Password**: `test@pvpsiddhartha.ac.in`
-
-Note: Accounts with email ending in `@pvpsiddhartha.ac.in` have admin access.
-
-## How to Use Different AI Providers
-
-1. Log in to the application
-2. Go to the **Settings** page
-3. Select your AI provider:
-   - **Ollama** (local, free, requires Ollama installed)
-   - **OpenAI** (cloud, requires API key)
-   - **Gemini** (cloud, requires API key)
-4. If using cloud providers, enter your API key
-5. Select the AI model you want to use
-6. Click **Test Connection** to verify it works
-7. Click **Save Settings**
-
-## Project Structure
-
-```
-Project/
-├── backend/                  # Python backend server
-│   ├── app/
-│   │   ├── main.py          # Main application entry
-│   │   ├── config.py        # Configuration settings
-│   │   ├── auth.py          # User authentication
-│   │   ├── llm_provider.py  # AI model provider logic
-│   │   ├── graph.py         # LangGraph agent workflow
-│   │   ├── tools.py         # Custom AI tools
-│   │   ├── schemas.py       # Data validation schemas
-│   │   ├── db/              # Database models and setup
-│   │   └── routers/         # API endpoints
-│   ├── data/                # University knowledge base
-│   │   ├── Academic/        # Academic calendar info
-│   │   ├── Administrative/  # University policies
-│   │   └── Educational/     # Course information
-│   └── requirements.txt     # Python dependencies
-│
-└── frontend/                # Next.js frontend website
-    ├── app/
-    │   ├── page.tsx         # Home page
-    │   ├── layout.tsx       # App layout
-    │   ├── chat/            # Chat interface
-    │   ├── login/           # Login page
-    │   ├── register/        # Registration page
-    │   └── settings/        # Settings page
-    ├── lib/                 # Utility functions
-    │   ├── api.ts           # API client
-    │   ├── auth-context.tsx # Authentication context
-    │   └── types.ts         # TypeScript types
-    └── package.json         # Node.js dependencies
-```
-
-## Technologies Used
-
-### Backend
-- **FastAPI** - Modern Python web framework
-- **SQLite** - Lightweight database
-- **LangChain** - Framework for AI applications
-- **LangGraph** - Agent workflow orchestration
-- **Ollama** - Local AI model runtime
-- **JWT** - Secure authentication
-
-### Frontend
-- **Next.js 15** - React framework
-- **TypeScript** - Type-safe JavaScript
-- **React 18** - UI library
-- **CSS Modules** - Component styling
-
-## Configuration
-
-The backend uses environment variables for configuration. Create a `.env` file in the `backend` folder:
+Create `backend/.env`:
 
 ```env
-JWT_SECRET_KEY=your-secret-key-here
+# Database (SQLite for dev, swap to postgres:// for production)
+DATABASE_URL=sqlite+aiosqlite:///./edubot.db
+DATABASE_URL_SYNC=sqlite:///./edubot.db
+
+# JWT
+JWT_SECRET_KEY=change-me-in-production
 JWT_ALGORITHM=HS256
 JWT_EXPIRY=30
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+
+# CORS
+CORS_ORIGINS=http://localhost:3000
+
+# Optional: University-level API keys (auto provider fallback)
+# OPENAI_API_KEY=sk-...
+# GOOGLE_API_KEY=AI...
+# DEEPSEEK_API_KEY=sk-...
+
 DEBUG=True
 ```
 
-## API Documentation
-
-When the backend is running, you can view the API documentation:
-
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
-
-## For Developers
-
-### Running Backend in Development Mode
+### 3 — Run
 
 ```bash
+# Terminal 1 — Backend
 cd backend
-python -m uvicorn app.main:app --reload
-```
+python -m uvicorn app.main:app --reload --port 8000
 
-The `--reload` flag automatically restarts the server when you change code.
-
-### Running Frontend in Development Mode
-
-```bash
+# Terminal 2 — Frontend
 cd frontend
 npm run dev
 ```
 
-This starts the Next.js development server with hot reload.
+- App: http://localhost:3000
+- API docs: http://localhost:8000/docs
 
-### Database Migrations
+### 4 — AI Providers
 
-If you make changes to the database models:
+Go to **Settings** after logging in to configure your provider:
 
-```bash
-cd backend
-alembic revision --autogenerate -m "description of change"
-alembic upgrade head
+| Provider | Requires | Models |
+|---|---|---|
+| Ollama | Ollama running locally | Any pulled model (e.g. `llama3.1:8b`) |
+| OpenAI | API key | `gpt-4o-mini` |
+| Google Gemini | API key | `gemini-2.5-flash`, `gemini-flash-latest` |
+| DeepSeek | API key | `deepseek-chat`, `deepseek-reasoner` (R1) |
+| Auto | — | Falls back: OpenAI → Gemini → DeepSeek → Ollama |
+
+---
+
+## 🗂️ Project Structure
+
+```
+Project/
+├── backend/
+│   ├── app/
+│   │   ├── main.py           # FastAPI app setup
+│   │   ├── config.py         # Env config
+│   │   ├── auth.py           # JWT auth helpers
+│   │   ├── llm_provider.py   # Multi-provider LLM abstraction
+│   │   ├── graph.py          # LangGraph agent workflow
+│   │   ├── tools.py          # RAG / search tools
+│   │   ├── schemas.py        # Pydantic request/response models
+│   │   ├── email_service.py  # OTP email sending
+│   │   ├── db/
+│   │   │   ├── database.py   # SQLAlchemy engine + session
+│   │   │   └── models.py     # ORM models (User, Chat, Message, Setting)
+│   │   └── routers/
+│   │       ├── auth_router.py
+│   │       ├── chat_router.py
+│   │       └── settings_router.py
+│   ├── data/
+│   │   ├── Academic/         # Academic calendar .txt files
+│   │   ├── Administrative/   # University info .txt files
+│   │   └── Educational/      # Course info .txt files
+│   └── requirements.txt
+│
+└── frontend/
+    ├── app/
+    │   ├── chat/             # Chat page
+    │   ├── login/            # Login page
+    │   ├── register/         # Register + OTP page
+    │   ├── settings/         # Settings page (provider, upload)
+    │   └── components/       # Shared UI components
+    ├── lib/
+    │   ├── api.ts            # API client (injects auth + API key headers)
+    │   ├── auth-context.tsx  # Auth state provider
+    │   └── types.ts          # Shared TypeScript types
+    └── package.json
 ```
 
-## License
+---
 
-This project is licensed under the MIT License.
+## 🛠️ Tech Stack
 
-## Support
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 15, TypeScript, React 18, CSS Modules |
+| Backend | FastAPI, Python 3.11, SQLAlchemy 2 (async) |
+| Agent | LangChain, LangGraph, LangChain-Ollama |
+| Database | SQLite (dev) → PostgreSQL (prod) |
+| Auth | JWT (python-jose), bcrypt (passlib), OTP via SMTP |
+| AI Providers | OpenAI, Google Gemini, Ollama, DeepSeek |
 
-For questions or issues, please contact the development team or open an issue on GitHub.
+---
+
+## 📝 API Reference
+
+When the backend is running:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+---
+
+## 📄 License
+
+MIT
