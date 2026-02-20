@@ -307,7 +307,7 @@ async def upload_file(
     target_dir.mkdir(parents=True, exist_ok=True)
     
     # Validate file extension
-    file_ext = Path(file.filename).suffix.lower()
+    file_ext = Path(safe_filename).suffix.lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -322,14 +322,22 @@ async def upload_file(
             detail=f"File size exceeds maximum limit of {MAX_FILE_SIZE / (1024*1024)}MB"
         )
     
+    # Sanitize filename to prevent path traversal
+    safe_filename = Path(file.filename).name
+    if not safe_filename or safe_filename.startswith('.'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename"
+        )
+    
     # Save file
-    file_path = target_dir / file.filename
+    file_path = target_dir / safe_filename
     
     # Check if file already exists
     if file_path.exists():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"File '{file.filename}' already exists in {category} category"
+            detail=f"File '{safe_filename}' already exists in {category} category"
         )
     
     try:
@@ -340,7 +348,7 @@ async def upload_file(
         return {
             "success": True,
             "message": f"File uploaded successfully to {category} category",
-            "filename": file.filename,
+            "filename": safe_filename,
             "category": category,
             "size": len(content)
         }

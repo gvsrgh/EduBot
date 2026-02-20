@@ -10,7 +10,6 @@ These tools are used by the LangGraph agent to retrieve
 relevant information from the organized knowledge base.
 """
 
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List

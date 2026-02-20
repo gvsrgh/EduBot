@@ -4,11 +4,13 @@ import { useState, FormEvent, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import styles from '../auth.module.css';
 
 type Step = 'form' | 'otp';
 
 export default function RegisterPage() {
+  const { loginWithToken } = useAuth();
   const [step, setStep] = useState<Step>('form');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -119,14 +121,13 @@ export default function RegisterPage() {
       // Verify OTP and register user via backend
       const response = await apiClient.verifyOTP({ email, otp: otpString });
       
-      // Store token and user data
-      apiClient.setToken(response.access_token);
+      // Store token and user data via auth context
       const userData = { 
         email: response.user.email, 
         username: response.user.username,
         is_admin: response.user.is_admin 
       };
-      localStorage.setItem('user', JSON.stringify(userData));
+      loginWithToken(response.access_token, userData);
       
       // Redirect to chat
       router.push('/chat');

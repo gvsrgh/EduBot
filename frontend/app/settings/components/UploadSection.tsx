@@ -4,6 +4,8 @@ import { useState } from 'react';
 import styles from '../settings.module.css';
 import CustomSelect from '../../components/CustomSelect';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+
 type FileCategory = 'Academic' | 'Administrative' | 'Educational';
 
 interface FileWithCategory {
@@ -98,7 +100,7 @@ export default function UploadSection() {
         formData.append('category', category);
 
         try {
-          const response = await fetch('http://localhost:8000/api/settings/upload', {
+          const response = await fetch(`${API_BASE}/settings/upload`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,

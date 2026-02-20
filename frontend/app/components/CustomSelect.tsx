@@ -69,11 +69,14 @@ export default function CustomSelect({
     }
   };
 
-  const handleSelect = (optionValue: string) => {
-    onChange(optionValue);
-    setIsOpen(false);
-    triggerRef.current?.focus();
-  };
+  const handleSelect = useCallback(
+    (optionValue: string) => {
+      onChange(optionValue);
+      setIsOpen(false);
+      triggerRef.current?.focus();
+    },
+    [onChange]
+  );
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -131,7 +134,7 @@ export default function CustomSelect({
           break;
       }
     },
-    [disabled, isOpen, focusedIndex, options, value]
+    [disabled, isOpen, focusedIndex, options, value, handleSelect]
   );
 
   // Handle mouse leave to close dropdown

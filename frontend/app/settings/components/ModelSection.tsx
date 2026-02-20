@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import styles from '../settings.module.css';
 import CustomSelect from '../../components/CustomSelect';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
 interface ModelSectionProps {
   formData: {

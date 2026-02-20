@@ -5,6 +5,7 @@ from sqlalchemy import select, asc
 from typing import Optional
 import json
 import asyncio
+import uuid
 
 from app.db.database import get_session
 from app.db.models import Chat, Message
@@ -92,6 +93,7 @@ async def send_message_public(
 async def send_message_prompt_public(
     message_data: MessageCreate,
     session: AsyncSession = Depends(get_session),
+    api_keys: None = Depends(set_user_api_keys),
 ):
     """Alias to the public message endpoint for compatibility with older frontends."""
     # Delegate to the public handler
@@ -107,7 +109,7 @@ async def get_user_chats(
     
     result = await session.execute(
         select(Chat)
-        .where(Chat.user_id == current_user["user_id"])
+        .where(Chat.user_id == uuid.UUID(current_user["user_id"]))
         .where(Chat.archived_at.is_(None))
         .order_by(Chat.updated_at.desc())
     )
@@ -130,7 +132,7 @@ async def send_message(
         result = await session.execute(
             select(Chat).where(
                 Chat.id == message_data.chat_id,
-                Chat.user_id == current_user["user_id"],
+                Chat.user_id == uuid.UUID(current_user["user_id"]),
                 Chat.archived_at.is_(None)
             )
         )
@@ -139,7 +141,7 @@ async def send_message(
             raise HTTPException(status_code=404, detail="Chat not found")
     else:
         # Create new chat
-        chat = Chat(user_id=current_user["user_id"], title="New Chat")
+        chat = Chat(user_id=uuid.UUID(current_user["user_id"]), title="New Chat")
         session.add(chat)
         await session.commit()
         await session.refresh(chat)
@@ -208,7 +210,7 @@ async def send_message_stream(
         result = await session.execute(
             select(Chat).where(
                 Chat.id == message_data.chat_id,
-                Chat.user_id == current_user["user_id"],
+                Chat.user_id == uuid.UUID(current_user["user_id"]),
                 Chat.archived_at.is_(None)
             )
         )
@@ -217,7 +219,7 @@ async def send_message_stream(
             raise HTTPException(status_code=404, detail="Chat not found")
     else:
         # Create new chat
-        chat = Chat(user_id=current_user["user_id"], title="New Chat")
+        chat = Chat(user_id=uuid.UUID(current_user["user_id"]), title="New Chat")
         session.add(chat)
         await session.commit()
         await session.refresh(chat)
@@ -300,7 +302,7 @@ async def get_chat_messages(
     result = await session.execute(
         select(Chat).where(
             Chat.id == chat_id,
-            Chat.user_id == current_user["user_id"],
+            Chat.user_id == uuid.UUID(current_user["user_id"]),
             Chat.archived_at.is_(None)
         )
     )
@@ -337,7 +339,7 @@ async def rename_chat(
     result = await session.execute(
         select(Chat).where(
             Chat.id == chat_id,
-            Chat.user_id == current_user["user_id"]
+            Chat.user_id == uuid.UUID(current_user["user_id"])
         )
     )
     chat = result.scalar_one_or_none()
@@ -362,7 +364,7 @@ async def archive_chat(
     result = await session.execute(
         select(Chat).where(
             Chat.id == chat_id,
-            Chat.user_id == current_user["user_id"]
+            Chat.user_id == uuid.UUID(current_user["user_id"])
         )
     )
     chat = result.scalar_one_or_none()
