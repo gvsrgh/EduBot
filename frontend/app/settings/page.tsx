@@ -51,6 +51,8 @@ export default function SettingsPage() {
     gemini_model: 'gemini-2.5-flash',
     ollama_url: 'http://localhost:11434',
     ollama_model: 'llama3.1:8b',
+    deepseek_key: '',
+    deepseek_model: 'deepseek-chat',
   });
 
   const loadSettings = async () => {
@@ -132,7 +134,7 @@ export default function SettingsPage() {
           localStorage.setItem('edubot_api_keys', JSON.stringify(migratedKeys));
         }
         
-        setApiKeys(migratedKeys);
+        setApiKeys(prev => ({ ...prev, ...migratedKeys }));
       } catch (e) {
         console.error('Failed to parse saved API keys');
       }

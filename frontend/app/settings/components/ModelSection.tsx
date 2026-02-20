@@ -19,6 +19,8 @@ interface ModelSectionProps {
     gemini_model: string;
     ollama_url: string;
     ollama_model: string;
+    deepseek_key: string;
+    deepseek_model: string;
   };
   setApiKeys: (keys: any) => void;
 }
@@ -39,6 +41,9 @@ export default function ModelSection({
   
   const [geminiTestStatus, setGeminiTestStatus] = useState('');
   const [testingGemini, setTestingGemini] = useState(false);
+
+  const [deepseekTestStatus, setDeepseekTestStatus] = useState('');
+  const [testingDeepseek, setTestingDeepseek] = useState(false);
 
   const testOllamaConnection = async () => {
     setTestingOllama(true);
@@ -175,6 +180,53 @@ export default function ModelSection({
     }
   };
 
+  const testDeepSeekConnection = async () => {
+    if (!apiKeys.deepseek_key) {
+      setDeepseekTestStatus('✗ Please enter a DeepSeek API key first');
+      setTimeout(() => setDeepseekTestStatus(''), 3000);
+      return;
+    }
+
+    setTestingDeepseek(true);
+    setDeepseekTestStatus('');
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/settings/test-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          provider: 'deepseek',
+          api_key: apiKeys.deepseek_key,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setDeepseekTestStatus(`✓ ${result.message}. ${result.details || ''}`);
+        } else {
+          setDeepseekTestStatus(`✗ ${result.message}. ${result.details || ''}`);
+        }
+      } else {
+        setDeepseekTestStatus('✗ Connection test failed');
+      }
+    } catch (err) {
+      setDeepseekTestStatus('✗ Cannot connect to DeepSeek');
+    } finally {
+      setTestingDeepseek(false);
+      setTimeout(() => setDeepseekTestStatus(''), 3000);
+    }
+  };
+
   return (
     <div className={styles.sectionContent}>
       <div className={styles.sectionIntro}>
@@ -200,6 +252,7 @@ export default function ModelSection({
             { value: 'ollama', label: 'Local Ollama (Recommended)' },
             { value: 'openai', label: 'OpenAI GPT-4' },
             { value: 'gemini', label: 'Google Gemini' },
+            { value: 'deepseek', label: 'DeepSeek' },
             { value: 'auto', label: 'Auto (University-Provided API with Fallback)' },
           ]}
         />
@@ -373,6 +426,67 @@ export default function ModelSection({
             {geminiTestStatus && (
               <div className={geminiTestStatus.startsWith('✓') ? styles.testSuccess : styles.testError}>
                 {geminiTestStatus}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DeepSeek Configuration */}
+      {formData.ai_provider === 'deepseek' && (
+        <div className={styles.providerConfig}>
+          <div className={styles.formGroup}>
+            <label htmlFor="deepseek_key">DeepSeek API Key</label>
+            <input
+              type="password"
+              id="deepseek_key"
+              value={apiKeys.deepseek_key}
+              onChange={(e) => {
+                const newKeys = { ...apiKeys, deepseek_key: e.target.value };
+                setApiKeys(newKeys);
+                localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
+              }}
+              placeholder="sk-..."
+              className={styles.input}
+            />
+            <small className={styles.hint}>
+              Get your API key from{' '}
+              <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">
+                DeepSeek Platform
+              </a>
+            </small>
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="deepseek_model">DeepSeek Model</label>
+            <CustomSelect
+              id="deepseek_model"
+              value={apiKeys.deepseek_model}
+              onChange={(value) => {
+                const newKeys = { ...apiKeys, deepseek_model: value };
+                setApiKeys(newKeys);
+                localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
+              }}
+              options={[
+                { value: 'deepseek-chat', label: 'DeepSeek Chat (Recommended - V3, fast & capable)' },
+                { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner (R1 — advanced reasoning)' },
+              ]}
+            />
+            <small className={styles.hint}>
+              Select the DeepSeek model to use
+            </small>
+          </div>
+          <div className={styles.formGroup}>
+            <button
+              type="button"
+              onClick={testDeepSeekConnection}
+              disabled={testingDeepseek || !apiKeys.deepseek_key}
+              className={styles.testButton}
+            >
+              {testingDeepseek ? 'Testing...' : '🔍 Test Connection'}
+            </button>
+            {deepseekTestStatus && (
+              <div className={deepseekTestStatus.startsWith('✓') ? styles.testSuccess : styles.testError}>
+                {deepseekTestStatus}
               </div>
             )}
           </div>

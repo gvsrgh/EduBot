@@ -26,7 +26,9 @@ def set_user_api_keys(
     x_gemini_key: Optional[str] = Header(None),
     x_gemini_model: Optional[str] = Header(None),
     x_ollama_url: Optional[str] = Header(None),
-    x_ollama_model: Optional[str] = Header(None)
+    x_ollama_model: Optional[str] = Header(None),
+    x_deepseek_key: Optional[str] = Header(None),
+    x_deepseek_model: Optional[str] = Header(None)
 ):
     """Extract and set API keys and models from request headers."""
     llm_provider.set_api_keys(
@@ -35,7 +37,9 @@ def set_user_api_keys(
         gemini_key=x_gemini_key,
         gemini_model=x_gemini_model,
         ollama_url=x_ollama_url,
-        ollama_model=x_ollama_model
+        ollama_model=x_ollama_model,
+        deepseek_key=x_deepseek_key,
+        deepseek_model=x_deepseek_model
     )
 
 
