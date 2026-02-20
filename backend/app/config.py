@@ -42,10 +42,10 @@ ACADEMIC_DIR = DATA_DIR / "Academic"
 ADMINISTRATIVE_DIR = DATA_DIR / "Administrative"
 EDUCATIONAL_DIR = DATA_DIR / "Educational"
 
-# Legacy file paths (for backward compatibility)
-UNIVERSITY_INFO_FILE = ADMINISTRATIVE_DIR / "university_info.txt"
-ACADEMIC_CALENDAR_FILE = ACADEMIC_DIR / "academic_calendar.txt"
-
 # Upload configuration
 ALLOWED_EXTENSIONS = {'.txt'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+# Qdrant Vector Database
+QDRANT_URL = os.getenv("QDRANT_URL", "")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
