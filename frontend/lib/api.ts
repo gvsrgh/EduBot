@@ -63,6 +63,12 @@ class ApiClient {
           if (apiKeys.ollama_model) {
             headers['X-Ollama-Model'] = apiKeys.ollama_model;
           }
+          if (apiKeys.deepseek_key) {
+            headers['X-DeepSeek-Key'] = apiKeys.deepseek_key;
+          }
+          if (apiKeys.deepseek_model) {
+            headers['X-DeepSeek-Model'] = apiKeys.deepseek_model;
+          }
         } catch (e) {
           console.error('Failed to parse API keys from localStorage');
         }

@@ -88,7 +88,7 @@ class ChatRename(BaseModel):
 
 # Settings Schemas
 class ProviderUpdate(BaseModel):
-    ai_provider: str = Field(..., pattern="^(openai|gemini|ollama|auto)$")
+    ai_provider: str = Field(..., pattern="^(openai|gemini|ollama|deepseek|auto)$")
 
 
 class ProviderResponse(BaseModel):
@@ -106,7 +106,7 @@ class SettingsResponse(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
-    ai_provider: Optional[str] = Field(None, pattern="^(openai|gemini|ollama|auto)$")
+    ai_provider: Optional[str] = Field(None, pattern="^(openai|gemini|ollama|deepseek|auto)$")
 
 
 class TestConnectionRequest(BaseModel):

@@ -16,7 +16,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_core.language_models.chat_models import BaseChatModel
 
-ProviderType = Literal["openai", "gemini", "ollama", "auto"]
+ProviderType = Literal["openai", "gemini", "ollama", "deepseek", "auto"]
 
 
 class LLMProvider:
@@ -30,7 +30,9 @@ class LLMProvider:
             'gemini': None,
             'gemini_model': 'gemini-2.5-flash',
             'ollama_url': 'http://localhost:11434',
-            'ollama_model': 'llama3.1:8b'
+            'ollama_model': 'llama3.1:8b',
+            'deepseek': None,
+            'deepseek_model': 'deepseek-chat'
         }
     
     def set_api_keys(
@@ -40,7 +42,9 @@ class LLMProvider:
         gemini_key: str = None,
         gemini_model: str = None,
         ollama_url: str = None,
-        ollama_model: str = None
+        ollama_model: str = None,
+        deepseek_key: str = None,
+        deepseek_model: str = None
     ):
         """Set API keys and models dynamically from user settings."""
         if openai_key:
@@ -55,6 +59,10 @@ class LLMProvider:
             self._api_keys['ollama_url'] = ollama_url
         if ollama_model:
             self._api_keys['ollama_model'] = ollama_model
+        if deepseek_key:
+            self._api_keys['deepseek'] = deepseek_key
+        if deepseek_model:
+            self._api_keys['deepseek_model'] = deepseek_model
     
     def get_api_keys(self) -> dict:
         """Get current API keys."""
@@ -90,10 +98,12 @@ class LLMProvider:
             return self._get_gemini(temperature, max_retries)
         elif provider == "ollama":
             return self._get_ollama(temperature, max_retries)
+        elif provider == "deepseek":
+            return self._get_deepseek(temperature, max_retries)
         else:
             raise ValueError(
                 f"Invalid AI provider: {provider}. "
-                f"Must be one of: openai, gemini, ollama, auto"
+                f"Must be one of: openai, gemini, ollama, deepseek, auto"
             )
     
     def _get_openai(self, temperature: float, max_retries: int) -> ChatOpenAI:
@@ -147,7 +157,29 @@ class LLMProvider:
             max_retries=max_retries,
             base_url=base_url,
         )
-    
+
+    def _get_deepseek(self, temperature: float, max_retries: int) -> ChatOpenAI:
+        """Get DeepSeek model via OpenAI-compatible API."""
+        api_key = self._api_keys.get('deepseek') or os.getenv('DEEPSEEK_API_KEY')
+        if not api_key:
+            raise ValueError("DEEPSEEK_API_KEY not configured")
+
+        model = self._api_keys.get('deepseek_model') or 'deepseek-chat'
+        supported_models = ['deepseek-chat', 'deepseek-reasoner']
+        if model not in supported_models:
+            raise ValueError(
+                f"Model '{model}' is not supported. "
+                f"Please use one of: {', '.join(supported_models)}."
+            )
+
+        return ChatOpenAI(
+            model=model,
+            temperature=temperature,
+            max_retries=max_retries,
+            openai_api_key=api_key,
+            openai_api_base="https://api.deepseek.com/v1",
+        )
+
     def _get_auto_provider(self, temperature: float, max_retries: int) -> BaseChatModel:
         """
         Auto-select provider with fallback priority:
@@ -183,14 +215,29 @@ class LLMProvider:
             try:
                 return self._get_gemini(temperature, max_retries)
             except Exception as e:
-                print(f"User Gemini failed: {e}, trying Ollama...")
-        
+                print(f"User Gemini failed: {e}, trying DeepSeek...")
+
+        # Try environment-provided DeepSeek
+        env_deepseek = os.getenv('DEEPSEEK_API_KEY')
+        if env_deepseek:
+            try:
+                return self._get_deepseek(temperature, max_retries)
+            except Exception as e:
+                print(f"DeepSeek env key failed: {e}, trying user DeepSeek...")
+
+        # Try user-provided DeepSeek
+        if self._api_keys.get('deepseek'):
+            try:
+                return self._get_deepseek(temperature, max_retries)
+            except Exception as e:
+                print(f"User DeepSeek failed: {e}, trying Ollama...")
+
         # Fallback to Ollama (local)
         return self._get_ollama(temperature, max_retries)
     
     def set_provider(self, provider: str):
         """Update the current provider setting."""
-        if provider.lower() not in ["openai", "gemini", "ollama", "auto"]:
+        if provider.lower() not in ["openai", "gemini", "ollama", "deepseek", "auto"]:
             raise ValueError(f"Invalid provider: {provider}")
         self.current_provider = provider.lower()
     
@@ -202,9 +249,7 @@ class LLMProvider:
         """Check if the current model supports tool/function calling."""
         provider = self.current_provider.lower()
         
-        if provider == "openai":
-            return True
-        elif provider == "gemini":
+        if provider in ("openai", "gemini", "deepseek"):
             return True
         elif provider == "ollama":
             # Some Ollama models don't support tools
@@ -228,6 +273,8 @@ class LLMProvider:
             return "openai"
         if os.getenv('GOOGLE_API_KEY') or self._api_keys.get('gemini'):
             return "gemini"
+        if os.getenv('DEEPSEEK_API_KEY') or self._api_keys.get('deepseek'):
+            return "deepseek"
         return "ollama"
     
     def get_available_providers(self) -> dict[str, bool]:
@@ -235,6 +282,7 @@ class LLMProvider:
         return {
             "openai": bool(self._api_keys.get('openai') or os.getenv('OPENAI_API_KEY')),
             "gemini": bool(self._api_keys.get('gemini') or os.getenv('GOOGLE_API_KEY')),
+            "deepseek": bool(self._api_keys.get('deepseek') or os.getenv('DEEPSEEK_API_KEY')),
             "ollama": True,  # Always available if Ollama is running
         }
 

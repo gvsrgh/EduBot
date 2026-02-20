@@ -120,6 +120,28 @@ async def test_connection(
                         "message": "Cannot connect to Ollama",
                         "details": "Make sure Ollama is running"
                     }
+        elif provider == "deepseek":
+            if not api_key:
+                return {"success": False, "message": "DeepSeek API key is required", "details": None}
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.deepseek.com/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=10.0
+                )
+                if response.status_code == 200:
+                    model_count = len(response.json().get("data", []))
+                    return {
+                        "success": True,
+                        "message": "Connected to DeepSeek successfully",
+                        "details": f"Found {model_count} available models"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Invalid API key or connection failed",
+                        "details": f"Status code: {response.status_code}"
+                    }
         else:
             return {
                 "success": False,
