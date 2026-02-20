@@ -21,6 +21,17 @@ async def lifespan(app: FastAPI):
     print("📦 Initializing database...")
     await init_db()
     print("✅ Database initialized")
+
+    # Initialize Qdrant vector store
+    print("📐 Initializing Qdrant vector store...")
+    try:
+        from app.vector_store import ensure_collection, seed_existing_documents
+        ensure_collection()
+        seed_existing_documents()
+        print("✅ Qdrant vector store ready")
+    except Exception as e:
+        print(f"⚠️ Qdrant initialization failed (non-fatal): {e}")
+
     print("🤖 LangGraph Agent ready")
     print("💬 Multi-model chatbot system active")
     

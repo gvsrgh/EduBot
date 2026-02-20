@@ -328,6 +328,14 @@ async def upload_file(
     # Ensure directory exists
     target_dir.mkdir(parents=True, exist_ok=True)
     
+    # Sanitize filename to prevent path traversal
+    safe_filename = Path(file.filename).name
+    if not safe_filename or safe_filename.startswith('.'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename"
+        )
+    
     # Validate file extension
     file_ext = Path(safe_filename).suffix.lower()
     if file_ext not in ALLOWED_EXTENSIONS:
@@ -342,14 +350,6 @@ async def upload_file(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"File size exceeds maximum limit of {MAX_FILE_SIZE / (1024*1024)}MB"
-        )
-    
-    # Sanitize filename to prevent path traversal
-    safe_filename = Path(file.filename).name
-    if not safe_filename or safe_filename.startswith('.'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filename"
         )
     
     # Save file
@@ -367,12 +367,22 @@ async def upload_file(
         with open(file_path, 'wb') as f:
             f.write(content)
         
+        # Index the document into the vector store
+        chunk_count = 0
+        try:
+            from app.vector_store import index_document
+            text_content = content.decode("utf-8", errors="ignore")
+            chunk_count = index_document(text_content, safe_filename, category)
+        except Exception as vec_err:
+            print(f"Warning: Vector indexing failed for {safe_filename}: {vec_err}")
+        
         return {
             "success": True,
             "message": f"File uploaded successfully to {category} category",
             "filename": safe_filename,
             "category": category,
-            "size": len(content)
+            "size": len(content),
+            "chunks_indexed": chunk_count
         }
         
     except Exception as e:

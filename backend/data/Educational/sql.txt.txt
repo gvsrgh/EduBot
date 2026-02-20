@@ -1,0 +1,191 @@
+========================
+EDUCATION – SQL OVERVIEW
+========================
+
+SQL (Structured Query Language) is a standard programming language used to
+manage and manipulate data stored in relational database management systems
+(RDBMS). It allows users to interact with databases by creating structures,
+storing information, retrieving required data, and maintaining data integrity.
+SQL is widely used in applications, websites, data analytics, and enterprise
+systems because of its simplicity, reliability, and efficiency.
+
+SQL works with data stored in tables that consist of rows and columns. Each
+table represents an entity, columns define attributes, and rows represent
+individual records. Using SQL queries, users can filter data, sort results,
+combine multiple tables, and perform calculations on stored information.
+
+-------------------------
+CORE SQL OPERATIONS
+-------------------------
+- Creating database objects such as databases, tables, views, and indexes.
+- Inserting new records into tables.
+- Retrieving data using queries with conditions and sorting.
+- Updating existing records.
+- Deleting unwanted or obsolete records.
+- Controlling access and permissions for database security.
+
+-------------------------
+COMMON SQL COMMAND TYPES
+-------------------------
+DDL (Data Definition Language)
+- CREATE   : Creates database objects like tables and views.
+- ALTER    : Modifies existing database structures.
+- DROP     : Deletes database objects permanently.
+- TRUNCATE : Removes all records from a table.
+
+DML (Data Manipulation Language)
+- INSERT   : Adds new data into a table.
+- UPDATE   : Modifies existing data.
+- DELETE   : Removes specific records.
+- SELECT   : Retrieves data from one or more tables.
+
+DCL (Data Control Language)
+- GRANT    : Provides user permissions.
+- REVOKE   : Removes user permissions.
+
+TCL (Transaction Control Language)
+- COMMIT   : Saves changes permanently.
+- ROLLBACK : Restores data to previous state.
+- SAVEPOINT: Sets a checkpoint in a transaction.
+
+-------------------------
+BASIC SQL QUERY EXAMPLES
+-------------------------
+SELECT * FROM students;
+SELECT name, marks FROM students WHERE marks > 75;
+INSERT INTO students VALUES (1, 'Alex', 85);
+UPDATE students SET marks = 90 WHERE id = 1;
+DELETE FROM students WHERE id = 1;
+
+-------------------------
+AGGREGATE FUNCTIONS
+-------------------------
+- COUNT : Counts number of records.
+- SUM   : Calculates total value.
+- AVG   : Calculates average value.
+- MIN   : Finds minimum value.
+- MAX   : Finds maximum value.
+
+-------------------------
+SQL JOINS
+-------------------------
+- INNER JOIN  : Returns matching records from both tables.
+- LEFT JOIN   : Returns all records from left table.
+- RIGHT JOIN  : Returns all records from right table.
+- FULL JOIN   : Returns records when there is a match in either table.
+
+-------------------------
+ADVANTAGES OF SQL
+-------------------------
+- Easy to learn and use.
+- Works with large amounts of data efficiently.
+- Supported by most database systems.
+- Secure with access control and transaction handling.
+- Highly scalable for enterprise applications.
+
+-------------------------
+APPLICATIONS OF SQL
+-------------------------
+- Web applications and backend systems.
+- Data analysis and reporting.
+- Banking and financial systems.
+- Inventory and student management systems.
+- Data warehousing and business intelligence.
+
+========================
+EDUCATION – SQL OVERVIEW
+========================
+
+SQL (Structured Query Language) is a standard programming language used to
+manage and manipulate data stored in relational database management systems
+(RDBMS). It allows users to interact with databases by creating structures,
+storing information, retrieving required data, and maintaining data integrity.
+SQL is widely used in applications, websites, data analytics, and enterprise
+systems because of its simplicity, reliability, and efficiency.
+
+SQL works with data stored in tables that consist of rows and columns. Each
+table represents an entity, columns define attributes, and rows represent
+individual records. Using SQL queries, users can filter data, sort results,
+combine multiple tables, and perform calculations on stored information.
+
+-------------------------
+CORE SQL OPERATIONS
+-------------------------
+- Creating database objects such as databases, tables, views, and indexes.
+- Inserting new records into tables.
+- Retrieving data using queries with conditions and sorting.
+- Updating existing records.
+- Deleting unwanted or obsolete records.
+- Controlling access and permissions for database security.
+
+-------------------------
+COMMON SQL COMMAND TYPES
+-------------------------
+DDL (Data Definition Language)
+- CREATE   : Creates database objects like tables and views.
+- ALTER    : Modifies existing database structures.
+- DROP     : Deletes database objects permanently.
+- TRUNCATE : Removes all records from a table.
+
+DML (Data Manipulation Language)
+- INSERT   : Adds new data into a table.
+- UPDATE   : Modifies existing data.
+- DELETE   : Removes specific records.
+- SELECT   : Retrieves data from one or more tables.
+
+DCL (Data Control Language)
+- GRANT    : Provides user permissions.
+- REVOKE   : Removes user permissions.
+
+TCL (Transaction Control Language)
+- COMMIT   : Saves changes permanently.
+- ROLLBACK : Restores data to previous state.
+- SAVEPOINT: Sets a checkpoint in a transaction.
+
+-------------------------
+BASIC SQL QUERY EXAMPLES
+-------------------------
+SELECT * FROM students;
+SELECT name, marks FROM students WHERE marks > 75;
+INSERT INTO students VALUES (1, 'Alex', 85);
+UPDATE students SET marks = 90 WHERE id = 1;
+DELETE FROM students WHERE id = 1;
+
+-------------------------
+AGGREGATE FUNCTIONS
+-------------------------
+- COUNT : Counts number of records.
+- SUM   : Calculates total value.
+- AVG   : Calculates average value.
+- MIN   : Finds minimum value.
+- MAX   : Finds maximum value.
+
+-------------------------
+SQL JOINS
+-------------------------
+- INNER JOIN  : Returns matching records from both tables.
+- LEFT JOIN   : Returns all records from left table.
+- RIGHT JOIN  : Returns all records from right table.
+- FULL JOIN   : Returns records when there is a match in either table.
+
+-------------------------
+ADVANTAGES OF SQL
+-------------------------
+- Easy to learn and use.
+- Works with large amounts of data efficiently.
+- Supported by most database systems.
+- Secure with access control and transaction handling.
+- Highly scalable for enterprise applications.
+
+-------------------------
+APPLICATIONS OF SQL
+-------------------------
+- Web applications and backend systems.
+- Data analysis and reporting.
+- Banking and financial systems.
+- Inventory and student management systems.
+- Data warehousing and business intelligence.
+
+=================================================================
+END OF DOCUMENT
+=================================================================

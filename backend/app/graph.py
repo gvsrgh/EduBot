@@ -8,8 +8,8 @@ This module creates the LangGraph workflow where:
 - The same LLM generates the final user-facing responses
 """
 
-from typing import Annotated, Sequence, TypedDict, Optional, Literal
-from langchain_core.messages import BaseMessage, SystemMessage, AIMessage, HumanMessage
+from typing import Annotated, Sequence, TypedDict, Literal
+from langchain_core.messages import BaseMessage, SystemMessage, AIMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
@@ -23,6 +23,39 @@ from app.tools import available_tools
 class AgentState(TypedDict):
     """State maintained throughout the conversation."""
     messages: Annotated[Sequence[BaseMessage], add_messages]
+
+
+def sanitize_messages(messages: list) -> list:
+    """
+    Remove orphaned tool_calls from history.
+    
+    If an AIMessage has tool_calls but is NOT followed by ToolMessages
+    for each call, OpenAI rejects the request. Strip those broken pairs.
+    """
+    from langchain_core.messages import AIMessage, ToolMessage
+    sanitized = []
+    i = 0
+    while i < len(messages):
+        msg = messages[i]
+        if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
+            # Collect the tool_call_ids that need responses
+            needed_ids = {tc["id"] for tc in msg.tool_calls}
+            # Collect following ToolMessages
+            j = i + 1
+            found_ids = set()
+            while j < len(messages) and isinstance(messages[j], ToolMessage):
+                found_ids.add(messages[j].tool_call_id)
+                j += 1
+            # Only keep if all tool responses are present
+            if needed_ids == found_ids:
+                sanitized.extend(messages[i:j])
+            else:
+                print(f"Dropping orphaned tool_calls message (missing responses for: {needed_ids - found_ids})")
+            i = j
+        else:
+            sanitized.append(msg)
+            i += 1
+    return sanitized
 
 
 def agent_node(state: AgentState) -> AgentState:
@@ -65,6 +98,7 @@ Your capabilities:
    - check_if_date_is_holiday: To verify if a specific date is a holiday
    - get_university_contact_info: For department contact information
    - search_educational_resources: For course materials and educational content
+   - search_all_domains: Search ALL categories at once when the question spans multiple topics or the domain is unclear
 
 Response Guidelines:
 - For ANY question, ALWAYS use the appropriate tool first
@@ -72,6 +106,7 @@ Response Guidelines:
 - Questions about dates, holidays, deadlines → use search_academic_calendar or check_if_date_is_holiday
 - Questions about contact info → use get_university_contact_info
 - Questions about courses, materials → use search_educational_resources
+- Questions spanning multiple topics or unclear domain → use search_all_domains
 - Questions about general topics (like "What is SQL?" or "Who is Trump?") → use search_educational_resources first, if no data found, respond: "I apologize, but I don't have information about [topic] in my university knowledge base. I can only answer questions about our university's academics, policies, schedules, and resources."
 
 If tools return "The related data is not present" or find nothing:
@@ -79,7 +114,7 @@ If tools return "The related data is not present" or find nothing:
 
 REMEMBER: You are a university-specific assistant. Stay within your knowledge base. Do not answer from general knowledge.""")
         
-        messages = [system_message] + list(state["messages"])
+        messages = [system_message] + sanitize_messages(list(state["messages"]))
         response = llm_with_tools.invoke(messages)
     else:
         print("Using LLM WITHOUT tool support - direct responses only")
@@ -95,7 +130,7 @@ Provide clear, concise, and helpful responses to user questions. Answer to the b
 
 Be friendly, informative, and professional. If you don't know something specific to this university, say so honestly.""")
         
-        messages = [system_message] + list(state["messages"])
+        messages = [system_message] + sanitize_messages(list(state["messages"]))
         response = llm.invoke(messages)
     
     return {"messages": [response]}
