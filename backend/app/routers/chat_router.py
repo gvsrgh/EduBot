@@ -58,7 +58,7 @@ async def send_message_public(
     
     # Invoke agent graph
     try:
-        result = agent_graph.invoke(
+        result = await agent_graph.ainvoke(
             {"messages": [("user", message_data.message)]},
             config=thread_config
         )
@@ -155,7 +155,7 @@ async def send_message(
     
     # Invoke agent graph
     try:
-        result = agent_graph.invoke(
+        result = await agent_graph.ainvoke(
             {"messages": [("user", message_data.message)]},
             config=thread_config
         )

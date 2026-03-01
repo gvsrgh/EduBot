@@ -13,10 +13,11 @@ from langchain_core.messages import BaseMessage, SystemMessage, AIMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres import PostgresSaver
 
 from app.llm_provider import get_current_llm, llm_provider
 from app.tools import available_tools
+from app.config import DATABASE_URL_SYNC
 
 
 # Define the Agent's State
@@ -170,13 +171,14 @@ def create_agent_graph():
     """
     print("---CREATING AGENT GRAPH---")
     
-    # Initialize in-memory checkpointer for conversation memory
+    # Initialize PostgreSQL checkpointer for persistent conversation memory
     try:
-        checkpointer = MemorySaver()
-        print("Memory checkpointer initialized")
+        checkpointer = PostgresSaver.from_conn_string(DATABASE_URL_SYNC)
+        checkpointer.setup()  # Creates checkpoint tables if they don't exist
+        print("PostgreSQL checkpointer initialized - conversation history will persist across restarts")
     except Exception as e:
-        print(f"Warning: Could not initialize checkpointer: {e}")
-        print("Conversation history will not persist")
+        print(f"Warning: Could not initialize PostgreSQL checkpointer: {e}")
+        print("Falling back to no checkpointer - conversation history will not persist")
         checkpointer = None
     
     # Build the graph
