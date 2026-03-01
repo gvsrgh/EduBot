@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Boolean, Integer
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
@@ -73,3 +73,32 @@ class Setting(Base):
     
     def __repr__(self):
         return f"<Setting id={self.id} provider={self.ai_provider}>"
+
+
+class Document(Base):
+    """
+    Knowledge-base document metadata (Paper §3.4 — Automatic Document Indexing).
+
+    Tracks every file uploaded to the knowledge base alongside the vector
+    IDs stored in Qdrant so we can reconcile the two stores.
+    """
+    __tablename__ = "documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filename = Column(String(255), nullable=False, index=True)
+    original_filename = Column(String(255), nullable=True)
+    category = Column(String(50), nullable=False, index=True)  # Academic / Administrative / Educational
+    file_type = Column(String(10), nullable=False)              # .txt, .pdf, .docx
+    file_size = Column(Integer, nullable=False, default=0)      # bytes (extracted text)
+    original_size = Column(Integer, nullable=True)               # bytes (raw upload)
+    chunk_count = Column(Integer, nullable=False, default=0)
+    vector_ids = Column(ARRAY(String), nullable=False, default=[])  # Qdrant point UUIDs
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    upload_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    uploader = relationship("User", foreign_keys=[uploaded_by])
+
+    def __repr__(self):
+        return f"<Document {self.filename} [{self.category}]>"

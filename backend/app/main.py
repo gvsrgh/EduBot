@@ -31,7 +31,55 @@ async def lifespan(app: FastAPI):
         print("✅ Qdrant vector store ready")
     except Exception as e:
         print(f"⚠️ Qdrant initialization failed (non-fatal): {e}")
+    
+    # Seed existing data/ files into PostgreSQL Document table
+    print("📄 Syncing document metadata to PostgreSQL...")
+    try:
+        from app.db.database import AsyncSessionLocal
+        from app.db.models import Document
+        from app.config import ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR
+        from sqlalchemy import select, and_
 
+        async with AsyncSessionLocal() as session:
+            dirs = {
+                "Academic": ACADEMIC_DIR,
+                "Administrative": ADMINISTRATIVE_DIR,
+                "Educational": EDUCATIONAL_DIR,
+            }
+            created = 0
+            for category, dir_path in dirs.items():
+                if not dir_path.exists():
+                    continue
+                for txt_file in sorted(dir_path.glob("*.txt")):
+                    # Check if already tracked in DB
+                    result = await session.execute(
+                        select(Document).where(
+                            and_(
+                                Document.filename == txt_file.name,
+                                Document.category == category,
+                            )
+                        )
+                    )
+                    if result.scalar_one_or_none():
+                        continue
+                    stat = txt_file.stat()
+                    doc = Document(
+                        filename=txt_file.name,
+                        original_filename=txt_file.name,
+                        category=category,
+                        file_type=".txt",
+                        file_size=stat.st_size,
+                        chunk_count=0,  # already indexed in Qdrant above
+                        vector_ids=[],
+                    )
+                    session.add(doc)
+                    created += 1
+            if created:
+                await session.commit()
+            print(f"✅ Document metadata synced ({created} new records)")
+    except Exception as e:
+        print(f"⚠️ Document metadata sync failed (non-fatal): {e}")
+    
     print("🤖 LangGraph Agent ready")
     print("💬 Multi-model chatbot system active")
     

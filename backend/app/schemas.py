@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
 
@@ -140,3 +140,37 @@ class VerifyOTPResponse(BaseModel):
     """Response after verifying OTP."""
     success: bool
     message: str
+
+
+# Document Schemas
+class DocumentResponse(BaseModel):
+    """Response schema for a knowledge-base document."""
+    id: str
+    filename: str
+    original_filename: Optional[str] = None
+    category: str
+    file_type: str
+    file_size: int
+    original_size: Optional[int] = None
+    chunk_count: int
+    vector_ids: List[str] = []
+    uploaded_by: Optional[str] = None
+    upload_date: datetime
+    updated_at: datetime
+
+    @field_validator('id', 'uploaded_by', mode='before')
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        if v is None:
+            return v
+        return v
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentListResponse(BaseModel):
+    """Response schema for list of documents."""
+    files: List[DocumentResponse]
