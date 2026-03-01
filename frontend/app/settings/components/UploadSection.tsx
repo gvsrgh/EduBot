@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import styles from '../settings.module.css';
 import CustomSelect from '../../components/CustomSelect';
 
@@ -13,16 +13,91 @@ interface FileWithCategory {
   category: FileCategory;
 }
 
+interface UploadedFile {
+  filename: string;
+  category: string;
+  size: number;
+  modified: number;
+}
+
 export default function UploadSection() {
   const [uploadedFiles, setUploadedFiles] = useState<FileWithCategory[]>([]);
+  const [existingFiles, setExistingFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [defaultCategory, setDefaultCategory] = useState<FileCategory>('Academic');
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingFile, setDeletingFile] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<{
     show: boolean;
     success: boolean;
     message: string;
   }>({ show: false, success: false, message: '' });
+
+  const fetchExistingFiles = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${API_BASE}/settings/files`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setExistingFiles(data.files || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch files:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchExistingFiles();
+  }, [fetchExistingFiles]);
+
+  const deleteExistingFile = async (category: string, filename: string) => {
+    const key = `${category}/${filename}`;
+    if (!confirm(`Are you sure you want to delete "${filename}" from ${category}?`)) return;
+
+    setDeletingFile(key);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `${API_BASE}/settings/files/${encodeURIComponent(category)}/${encodeURIComponent(filename)}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        }
+      );
+
+      if (response.ok) {
+        setUploadStatus({
+          show: true,
+          success: true,
+          message: `Deleted "${filename}" from ${category}`,
+        });
+        fetchExistingFiles();
+        setTimeout(() => setUploadStatus({ show: false, success: false, message: '' }), 4000);
+      } else {
+        const error = await response.json();
+        setUploadStatus({
+          show: true,
+          success: false,
+          message: error.detail || 'Delete failed',
+        });
+      }
+    } catch (error) {
+      setUploadStatus({
+        show: true,
+        success: false,
+        message: error instanceof Error ? error.message : 'Delete failed',
+      });
+    } finally {
+      setDeletingFile(null);
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -130,6 +205,7 @@ export default function UploadSection() {
           message: `Successfully uploaded ${successCount} file${successCount > 1 ? 's' : ''}!`
         });
         setUploadedFiles([]);
+        fetchExistingFiles();
       } else if (successCount > 0 && failCount > 0) {
         setUploadStatus({
           show: true,
@@ -275,6 +351,39 @@ export default function UploadSection() {
               'Upload All Files'
             )}
           </button>
+        </div>
+      )}
+
+      {/* Existing Knowledge Base Files */}
+      {existingFiles.length > 0 && (
+        <div className={styles.uploadedFilesList}>
+          <h4>📂 Knowledge Base Files ({existingFiles.length})</h4>
+          <div className={styles.filesList}>
+            {existingFiles.map((item, index) => {
+              const key = `${item.category}/${item.filename}`;
+              const categoryIcon = item.category === 'Academic' ? '📅' : item.category === 'Administrative' ? '🏛️' : '📖';
+              return (
+                <div key={index} className={styles.fileItem}>
+                  <div className={styles.fileInfo}>
+                    <span className={styles.fileIcon}>{categoryIcon}</span>
+                    <div className={styles.fileDetails}>
+                      <p className={styles.fileName}>{item.filename}</p>
+                      <p className={styles.fileSize}>{item.category} · {formatFileSize(item.size)}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => deleteExistingFile(item.category, item.filename)}
+                    className={styles.removeButton}
+                    title="Delete file from knowledge base"
+                    disabled={deletingFile === key}
+                  >
+                    {deletingFile === key ? '⏳' : '🗑️'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
