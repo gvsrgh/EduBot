@@ -4,7 +4,6 @@ from sqlalchemy import select
 import httpx
 from typing import Optional
 from pathlib import Path
-import shutil
 
 from app.db.database import get_session
 from app.db.models import Setting
@@ -12,6 +11,7 @@ from app.schemas import ProviderUpdate, ProviderResponse, SettingsResponse, Sett
 from app.auth import get_current_user, get_current_admin_user
 from app.llm_provider import llm_provider
 from app.config import ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR, ALLOWED_EXTENSIONS, MAX_FILE_SIZE
+from app.document_parser import extract_text
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
@@ -291,10 +291,14 @@ async def upload_file(
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Upload a text file to the knowledge base.
+    Upload a document to the knowledge base.
+    
+    Supported formats: TXT, PDF, DOCX.
+    PDF and DOCX files are automatically converted to plain text.
+    Scanned PDFs are processed with OCR (Tesseract) when available.
     
     Args:
-        file: The file to upload (must be .txt)
+        file: The file to upload (.txt, .pdf, or .docx)
         category: Category for the file ("Academic", "Administrative", or "Educational")
         
     Returns:
@@ -317,17 +321,6 @@ async def upload_file(
             detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
         )
     
-    # Get category directory
-    category_dirs = {
-        "Academic": ACADEMIC_DIR,
-        "Administrative": ADMINISTRATIVE_DIR,
-        "Educational": EDUCATIONAL_DIR
-    }
-    target_dir = category_dirs[category]
-    
-    # Ensure directory exists
-    target_dir.mkdir(parents=True, exist_ok=True)
-    
     # Sanitize filename to prevent path traversal
     safe_filename = Path(file.filename).name
     if not safe_filename or safe_filename.startswith('.'):
@@ -339,9 +332,10 @@ async def upload_file(
     # Validate file extension
     file_ext = Path(safe_filename).suffix.lower()
     if file_ext not in ALLOWED_EXTENSIONS:
+        allowed = ", ".join(sorted(ALLOWED_EXTENSIONS))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file type. Only .txt files are allowed."
+            detail=f"Invalid file type '{file_ext}'. Allowed: {allowed}"
         )
     
     # Read file content to check size
@@ -349,23 +343,52 @@ async def upload_file(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File size exceeds maximum limit of {MAX_FILE_SIZE / (1024*1024)}MB"
+            detail=f"File size exceeds maximum limit of {MAX_FILE_SIZE / (1024*1024):.0f}MB"
         )
     
-    # Save file
-    file_path = target_dir / safe_filename
+    # Get category directory
+    category_dirs = {
+        "Academic": ACADEMIC_DIR,
+        "Administrative": ADMINISTRATIVE_DIR,
+        "Educational": EDUCATIONAL_DIR
+    }
+    target_dir = category_dirs[category]
+    
+    # Ensure directory exists
+    target_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Extract text from the document (PDF/DOCX are converted to plain text)
+    try:
+        extracted_text, output_filename = extract_text(safe_filename, content)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+    
+    # Save extracted text as .txt file
+    file_path = target_dir / output_filename
     
     # Check if file already exists
     if file_path.exists():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"File '{safe_filename}' already exists in {category} category"
+            detail=f"File '{output_filename}' already exists in {category} category"
         )
     
     try:
-        # Write file content
-        with open(file_path, 'wb') as f:
-            f.write(content)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(extracted_text)
+        
+        original_ext = Path(safe_filename).suffix.lower()
+        converted_note = ""
+        if original_ext != '.txt':
+            converted_note = f" (converted from {original_ext.upper().lstrip('.')})"
         
         # Index the document into the vector store
         chunk_count = 0
@@ -378,10 +401,12 @@ async def upload_file(
         
         return {
             "success": True,
-            "message": f"File uploaded successfully to {category} category",
-            "filename": safe_filename,
+            "message": f"File uploaded successfully to {category} category{converted_note}",
+            "filename": output_filename,
+            "original_filename": safe_filename,
             "category": category,
-            "size": len(content),
+            "size": len(extracted_text.encode('utf-8')),
+            "original_size": len(content),
             "chunks_indexed": chunk_count
         }
         
