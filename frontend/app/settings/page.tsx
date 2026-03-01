@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import styles from './settings.module.css';
 import UploadSection from './components/UploadSection';
 import ModelSection from './components/ModelSection';
+import KnowledgeBase from './components/KnowledgeBase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
@@ -255,7 +256,16 @@ export default function SettingsPage() {
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.tabContent}>
-            {activeTab === 'upload' && hasUploadAccess && <UploadSection />}
+            {activeTab === 'upload' && hasUploadAccess && (
+              <div className={styles.uploadTabLayout}>
+                <div className={styles.uploadColumn}>
+                  <UploadSection />
+                </div>
+                <div className={styles.kbColumn}>
+                  <KnowledgeBase />
+                </div>
+              </div>
+            )}
             {activeTab === 'model' && (
               <ModelSection
                 formData={formData}
