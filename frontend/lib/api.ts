@@ -116,6 +116,20 @@ class ApiClient {
     });
   }
 
+  async forgotPassword(data: { email: string }): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async resetPassword(data: { email: string; otp: string; new_password: string }): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async sendMessage(data: MessageRequest): Promise<MessageResponse> {
     return this.request<MessageResponse>('/chat/message', {
       method: 'POST',

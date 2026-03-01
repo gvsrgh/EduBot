@@ -14,6 +14,9 @@ load_dotenv()
 # In-memory OTP storage (use Redis in production)
 otp_store: Dict[str, dict] = {}
 
+# Separate OTP store for password reset
+password_reset_otp_store: Dict[str, dict] = {}
+
 
 def generate_otp() -> str:
     """Generate a 6-digit OTP."""
@@ -289,3 +292,111 @@ def send_welcome_email(email: str, username: str) -> bool:
     """Send welcome email after successful registration."""
     html_content = get_welcome_email_template(username, email)
     return send_email(email, "🎉 Welcome to EduBot+ - Account Created Successfully!", html_content)
+
+
+def get_password_reset_email_template(otp: str, username: str) -> str:
+    """Generate professional password reset OTP email HTML template."""
+    current_year = datetime.now().year
+    return f'''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your Password - EduBot+</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 20px 40px; text-align: center; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); border-radius: 16px 16px 0 0;">
+              <h1 style="margin: 0; font-size: 32px; color: #ffffff; font-weight: 700;">🔑 EduBot+</h1>
+              <p style="margin: 8px 0 0 0; font-size: 14px; color: rgba(255, 255, 255, 0.9);">Password Reset Request</p>
+            </td>
+          </tr>
+          
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 16px 0; font-size: 24px; color: #1a1a2e; font-weight: 600;">Reset Your Password</h2>
+              <p style="margin: 0 0 24px 0; font-size: 16px; color: #4a5568; line-height: 1.6;">
+                Hello <strong>{username}</strong>,
+              </p>
+              <p style="margin: 0 0 24px 0; font-size: 16px; color: #4a5568; line-height: 1.6;">
+                We received a request to reset your password. Use the verification code below to proceed:
+              </p>
+              
+              <!-- OTP Box -->
+              <div style="background: linear-gradient(135deg, #e74c3c15 0%, #c0392b15 100%); border: 2px dashed #e74c3c; border-radius: 12px; padding: 24px; text-align: center; margin: 32px 0;">
+                <p style="margin: 0 0 8px 0; font-size: 14px; color: #4a5568; text-transform: uppercase; letter-spacing: 1px;">Your Reset Code</p>
+                <p style="margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 12px; color: #e74c3c; font-family: 'Courier New', monospace;">{otp}</p>
+              </div>
+              
+              <p style="margin: 0 0 16px 0; font-size: 14px; color: #718096; line-height: 1.6;">
+                ⏱️ This code will expire in <strong>10 minutes</strong> for security purposes.
+              </p>
+              
+              <div style="background-color: #fff8e6; border-left: 4px solid #f6ad55; padding: 16px; border-radius: 0 8px 8px 0; margin: 24px 0;">
+                <p style="margin: 0; font-size: 14px; color: #744210;">
+                  <strong>🔒 Security Notice:</strong> If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
+                </p>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 40px; background-color: #f8fafc; border-radius: 0 0 16px 16px; text-align: center;">
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #718096;">
+                Need help? Contact us at <a href="mailto:gvsrytchannel@gmail.com" style="color: #e74c3c; text-decoration: none;">support@edubot.com</a>
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #a0aec0;">
+                © {current_year} EduBot+. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+'''
+
+
+def store_password_reset_otp(email: str, otp: str) -> None:
+    """Store password reset OTP with expiration time."""
+    password_reset_otp_store[email] = {
+        'otp': otp,
+        'expires_at': datetime.now() + timedelta(minutes=10)
+    }
+
+
+def verify_password_reset_otp(email: str, otp: str) -> bool:
+    """Verify password reset OTP. Returns True if valid."""
+    stored = password_reset_otp_store.get(email)
+    
+    if not stored:
+        return False
+    
+    if datetime.now() > stored['expires_at']:
+        del password_reset_otp_store[email]
+        return False
+    
+    if not hmac.compare_digest(stored['otp'], otp):
+        return False
+    
+    del password_reset_otp_store[email]  # OTP is single use
+    return True
+
+
+def send_password_reset_otp_email(email: str, username: str) -> bool:
+    """Generate, store and send password reset OTP email."""
+    otp = generate_otp()
+    store_password_reset_otp(email, otp)
+    
+    html_content = get_password_reset_email_template(otp, username)
+    return send_email(email, "🔑 Reset Your Password - EduBot+", html_content)

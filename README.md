@@ -66,7 +66,7 @@
 |---|---|---|---|
 | 16 | Next.js Responsive Web Interface | ✅ | Next.js 15, CSS Modules, mobile-friendly. |
 | 17 | Chat Interface | ✅ | Streaming responses, history sidebar, rename/delete. Paper: responses include source citations ("According to…"). |
-| 18 | Settings Page | ⚠️ | Provider / model / API key config done. **Forgot-password flow** and **document expiry management** missing. |
+| 18 | Settings Page | ⚠️ | Provider / model / API key config done. **Forgot-password flow ✅ implemented.** **Document expiry management** still missing. |
 
 ---
 
@@ -151,9 +151,11 @@
    - Configure `PostgresSaver` as LangGraph checkpoint backend
    - Resume full conversation context across logins
 
-8. **Forgot Password Flow** (`#18`) — *Sreekar*
+8. **~~Forgot Password Flow~~** (`#18`) — *Sreekar* ✅
    - `POST /auth/forgot-password` → send reset OTP
-   - Add `frontend/app/reset-password/` page
+   - `POST /auth/reset-password` → verify OTP + update password
+   - Added `frontend/app/forgot-password/` page with 4-step flow (email → OTP → new password → success)
+   - "Forgot Password?" link added to login page
 
 ---
 
@@ -267,6 +269,7 @@ Project/
     │   ├── chat/             # Chat page
     │   ├── login/            # Login page
     │   ├── register/         # Register + OTP page
+    │   ├── forgot-password/  # Forgot password + OTP reset page
     │   ├── settings/         # Settings page (provider, upload)
     │   └── components/       # Shared UI components
     ├── lib/

@@ -7,10 +7,11 @@ from app.db.database import get_session
 from app.db.models import User
 from app.schemas import (
     UserRegister, UserLogin, Token, UserResponse,
-    SendOTPRequest, SendOTPResponse, VerifyOTPRequest, VerifyOTPResponse
+    SendOTPRequest, SendOTPResponse, VerifyOTPRequest, VerifyOTPResponse,
+    ForgotPasswordRequest, ForgotPasswordResponse, VerifyResetOTPRequest, ResetPasswordRequest
 )
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
-from app.email_service import send_otp_email, verify_otp, send_welcome_email
+from app.email_service import send_otp_email, verify_otp, send_welcome_email, send_password_reset_otp_email, verify_password_reset_otp
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -233,3 +234,90 @@ async def get_current_user_info(
         )
     
     return UserResponse.model_validate(user)
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Send OTP to email for password reset."""
+    
+    # Find user by email
+    result = await session.execute(
+        select(User).where(User.email == data.email)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        # Don't reveal whether email exists - still return success
+        return ForgotPasswordResponse(
+            success=True,
+            message="If an account with that email exists, a reset code has been sent."
+        )
+    
+    if not user.is_active:
+        return ForgotPasswordResponse(
+            success=True,
+            message="If an account with that email exists, a reset code has been sent."
+        )
+    
+    # Send password reset OTP
+    sent = send_password_reset_otp_email(data.email, user.username)
+    
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send reset email. Please try again.",
+        )
+    
+    return ForgotPasswordResponse(
+        success=True,
+        message="If an account with that email exists, a reset code has been sent."
+    )
+
+
+@router.post("/reset-password", response_model=ForgotPasswordResponse)
+async def reset_password(
+    data: ResetPasswordRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Verify OTP and reset the user's password."""
+    
+    # Verify the OTP
+    is_valid = verify_password_reset_otp(data.email, data.otp)
+    
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset code. Please request a new one.",
+        )
+    
+    # Find the user
+    result = await session.execute(
+        select(User).where(User.email == data.email)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+    
+    # Update password
+    user.hashed_password = hash_password(data.new_password)
+    
+    try:
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset password. Please try again.",
+        )
+    
+    return ForgotPasswordResponse(
+        success=True,
+        message="Password has been reset successfully. You can now log in with your new password."
+    )
