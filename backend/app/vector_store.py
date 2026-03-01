@@ -27,11 +27,12 @@ from fastembed import TextEmbedding
 
 # ── Configuration ──────────────────────────────────────────────
 from app.config import QDRANT_URL, QDRANT_API_KEY
+
 COLLECTION_NAME = "edubot_documents"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384  # Dimension of all-MiniLM-L6-v2
-CHUNK_SIZE = 800  # ~800 characters per chunk
-CHUNK_OVERLAP = 80  # ~10% overlap
+CHUNK_SIZE = 800     # ~800 characters per chunk
+CHUNK_OVERLAP = 80   # ~10% overlap
 SIMILARITY_THRESHOLD = 0.20
 TOP_K = 5
 
@@ -156,6 +157,12 @@ def index_document(
     """
     ensure_collection()
     client = get_qdrant_client()
+
+    # Remove any existing chunks for this file first (re-index support)
+    try:
+        delete_document(filename, category)
+    except Exception:
+        pass
 
     # Chunk the text
     chunks = chunk_text(text)

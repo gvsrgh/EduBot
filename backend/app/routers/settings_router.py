@@ -378,14 +378,18 @@ async def upload_file(
         with open(file_path, 'wb') as f:
             f.write(content)
         
-        # Index the document into the vector store
-        chunk_count = 0
+        # Index the document in Qdrant vector store for semantic search
         try:
             from app.vector_store import index_document
-            text_content = content.decode("utf-8", errors="ignore")
-            chunk_count = index_document(text_content, safe_filename, category)
+            chunk_count = index_document(extracted_text, output_filename, category)
+            print(f"Indexed '{output_filename}' in Qdrant ({chunk_count} chunks)")
         except Exception as vec_err:
-            print(f"Warning: Vector indexing failed for {safe_filename}: {vec_err}")
+            print(f"Warning: Vector indexing failed for '{output_filename}': {vec_err}")
+        
+        original_ext = Path(safe_filename).suffix.lower()
+        converted_note = ""
+        if original_ext != '.txt':
+            converted_note = f" (converted from {original_ext.upper().lstrip('.')})"
         
         return {
             "success": True,
@@ -404,4 +408,115 @@ async def upload_file(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error saving file: {str(e)}"
+        )
+
+
+@router.get("/files")
+async def list_uploaded_files(
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    List all uploaded files in the knowledge base, organized by category.
+    
+    Returns:
+        List of files with their category, name, and size
+    """
+    category_dirs = {
+        "Academic": ACADEMIC_DIR,
+        "Administrative": ADMINISTRATIVE_DIR,
+        "Educational": EDUCATIONAL_DIR,
+    }
+    
+    files = []
+    for category, dir_path in category_dirs.items():
+        if not dir_path.exists():
+            continue
+        for file_path in sorted(dir_path.glob("*.txt")):
+            stat = file_path.stat()
+            files.append({
+                "filename": file_path.name,
+                "category": category,
+                "size": stat.st_size,
+                "modified": stat.st_mtime,
+            })
+    
+    return {"files": files}
+
+
+@router.delete("/files/{category}/{filename}")
+async def delete_uploaded_file(
+    category: str,
+    filename: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Delete an uploaded file from the knowledge base.
+    
+    Args:
+        category: File category ("Academic", "Administrative", or "Educational")
+        filename: Name of the file to delete
+        
+    Returns:
+        Success message
+    """
+    # Restrict delete access for @pvpsit.ac.in users
+    user_email = current_user.get("email", "")
+    if user_email.endswith("@pvpsit.ac.in"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="File deletion is not allowed for @pvpsit.ac.in users"
+        )
+    
+    # Validate category
+    valid_categories = {"Academic", "Administrative", "Educational"}
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
+        )
+    
+    category_dirs = {
+        "Academic": ACADEMIC_DIR,
+        "Administrative": ADMINISTRATIVE_DIR,
+        "Educational": EDUCATIONAL_DIR,
+    }
+    target_dir = category_dirs[category]
+    
+    # Sanitize filename to prevent path traversal
+    safe_filename = Path(filename).name
+    if not safe_filename or safe_filename.startswith('.') or '/' in filename or '\\' in filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename"
+        )
+    
+    file_path = target_dir / safe_filename
+    
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File '{safe_filename}' not found in {category} category"
+        )
+    
+    try:
+        file_path.unlink()
+        
+        # Remove document vectors from Qdrant
+        try:
+            from app.vector_store import delete_document
+            delete_document(safe_filename, category)
+            print(f"Removed vectors for '{safe_filename}' from Qdrant")
+        except Exception as vec_err:
+            print(f"Warning: Vector deletion failed for '{safe_filename}': {vec_err}")
+        
+        return {
+            "success": True,
+            "message": f"File '{safe_filename}' deleted from {category} category",
+            "filename": safe_filename,
+            "category": category,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting file: {str(e)}"
         )
