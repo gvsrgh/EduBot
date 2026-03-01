@@ -4,11 +4,15 @@ from sqlalchemy import select
 import httpx
 from typing import Optional
 from pathlib import Path
-import shutil
+from datetime import datetime, timezone
 
 from app.db.database import get_session
-from app.db.models import Setting
-from app.schemas import ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate, TestConnectionRequest
+from app.db.models import Setting, Document
+from app.schemas import (
+    ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate,
+    TestConnectionRequest, DocumentResponse, DocumentListResponse,
+    DocumentExpiryUpdate,
+)
 from app.auth import get_current_user, get_current_admin_user
 from app.llm_provider import llm_provider
 from app.config import ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR, ALLOWED_EXTENSIONS, MAX_FILE_SIZE
@@ -288,6 +292,7 @@ async def update_settings(
 async def upload_file(
     file: UploadFile = File(...),
     category: str = Form(...),
+    expiry_date: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -374,7 +379,43 @@ async def upload_file(
             text_content = content.decode("utf-8", errors="ignore")
             chunk_count = index_document(text_content, safe_filename, category)
         except Exception as vec_err:
-            print(f"Warning: Vector indexing failed for {safe_filename}: {vec_err}")
+            print(f"Warning: Vector indexing failed for '{output_filename}': {vec_err}")
+        
+        # Create Document record in PostgreSQL
+        user_id = current_user.get("user_id")
+
+        # Parse optional expiry_date
+        parsed_expiry = None
+        if expiry_date:
+            try:
+                parsed_expiry = datetime.fromisoformat(expiry_date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid expiry_date format. Use ISO 8601 (e.g. 2026-06-15T00:00:00Z)"
+                )
+
+        doc_record = Document(
+            filename=output_filename,
+            original_filename=safe_filename,
+            category=category,
+            file_type=file_ext,
+            file_size=len(extracted_text.encode('utf-8')),
+            original_size=len(content),
+            chunk_count=chunk_count,
+            vector_ids=vector_ids,
+            uploaded_by=user_id,
+            expiry_date=parsed_expiry,
+        )
+        session.add(doc_record)
+        await session.commit()
+        await session.refresh(doc_record)
+        print(f"Document record created in PostgreSQL: {doc_record.id}")
+        
+        original_ext = Path(safe_filename).suffix.lower()
+        converted_note = ""
+        if original_ext != '.txt':
+            converted_note = f" (converted from {original_ext.upper().lstrip('.')})"
         
         return {
             "success": True,
@@ -394,3 +435,224 @@ async def upload_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error saving file: {str(e)}"
         )
+
+
+@router.get("/files")
+async def list_uploaded_files(
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    List all uploaded files in the knowledge base, organized by category.
+    
+    Queries the PostgreSQL Document table. Falls back to filesystem glob
+    for any files not yet tracked in the database.
+    """
+    # Query all documents from PostgreSQL
+    result = await session.execute(
+        select(Document).order_by(Document.category, Document.filename)
+    )
+    db_docs = result.scalars().all()
+
+    # Build a set of (filename, category) from DB for dedup
+    db_keys: set[tuple[str, str]] = set()
+    files = []
+    for doc in db_docs:
+        db_keys.add((doc.filename, doc.category))
+        files.append(DocumentResponse.model_validate(doc).model_dump())
+
+    # Fallback: also pick up any .txt files on disk not yet tracked in DB
+    category_dirs = {
+        "Academic": ACADEMIC_DIR,
+        "Administrative": ADMINISTRATIVE_DIR,
+        "Educational": EDUCATIONAL_DIR,
+    }
+    for category, dir_path in category_dirs.items():
+        if not dir_path.exists():
+            continue
+        for file_path in sorted(dir_path.glob("*.txt")):
+            if (file_path.name, category) in db_keys:
+                continue
+            stat = file_path.stat()
+            files.append({
+                "filename": file_path.name,
+                "category": category,
+                "size": stat.st_size,
+                "modified": stat.st_mtime,
+            })
+
+    return {"files": files}
+
+
+@router.delete("/files/{category}/{filename}")
+async def delete_uploaded_file(
+    category: str,
+    filename: str,
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Delete an uploaded file from the knowledge base.
+    
+    Removes the file from disk, its vectors from Qdrant, and its
+    Document record from PostgreSQL.
+    """
+    # Restrict delete access for @pvpsit.ac.in users
+    user_email = current_user.get("email", "")
+    if user_email.endswith("@pvpsit.ac.in"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="File deletion is not allowed for @pvpsit.ac.in users"
+        )
+    
+    # Validate category
+    valid_categories = {"Academic", "Administrative", "Educational"}
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
+        )
+    
+    category_dirs = {
+        "Academic": ACADEMIC_DIR,
+        "Administrative": ADMINISTRATIVE_DIR,
+        "Educational": EDUCATIONAL_DIR,
+    }
+    target_dir = category_dirs[category]
+    
+    # Sanitize filename to prevent path traversal
+    safe_filename = Path(filename).name
+    if not safe_filename or safe_filename.startswith('.') or '/' in filename or '\\' in filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename"
+        )
+    
+    file_path = target_dir / safe_filename
+    
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File '{safe_filename}' not found in {category} category"
+        )
+    
+    try:
+        file_path.unlink()
+        
+        # Remove document vectors from Qdrant
+        try:
+            from app.vector_store import delete_document
+            delete_document(safe_filename, category)
+            print(f"Removed vectors for '{safe_filename}' from Qdrant")
+        except Exception as vec_err:
+            print(f"Warning: Vector deletion failed for '{safe_filename}': {vec_err}")
+        
+        # Remove Document record from PostgreSQL
+        result = await session.execute(
+            select(Document).where(
+                and_(
+                    Document.filename == safe_filename,
+                    Document.category == category,
+                )
+            )
+        )
+        doc_record = result.scalar_one_or_none()
+        if doc_record:
+            await session.delete(doc_record)
+            await session.commit()
+            print(f"Deleted Document record from PostgreSQL: {doc_record.id}")
+        
+        return {
+            "success": True,
+            "message": f"File '{safe_filename}' deleted from {category} category",
+            "filename": safe_filename,
+            "category": category,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting file: {str(e)}"
+        )
+
+
+# -----------------------------------------------------------------------
+# Document Expiry Management
+# -----------------------------------------------------------------------
+
+@router.patch("/files/{document_id}/expiry", response_model=DocumentResponse)
+async def update_document_expiry(
+    document_id: str,
+    body: DocumentExpiryUpdate,
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Set or remove expiry date on a document.
+
+    - Send `{ "expiry_date": "2026-06-15T00:00:00Z" }` to set expiry.
+    - Send `{ "expiry_date": null }` to remove expiry (never expires).
+    """
+    user_email = current_user.get("email", "")
+    if user_email.endswith("@pvpsit.ac.in"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Expiry management is not allowed for @pvpsit.ac.in users",
+        )
+
+    result = await session.execute(
+        select(Document).where(Document.id == document_id)
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    doc.expiry_date = body.expiry_date
+    # Refresh cached `is_expired` flag
+    if body.expiry_date is None:
+        doc.is_expired = False
+    else:
+        doc.is_expired = body.expiry_date <= datetime.now(timezone.utc)
+
+    await session.commit()
+    await session.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.get("/files/expired", response_model=DocumentListResponse)
+async def list_expired_documents(
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """List all documents whose expiry_date has passed."""
+    now = datetime.now(timezone.utc)
+    result = await session.execute(
+        select(Document).where(Document.expiry_date <= now).order_by(Document.expiry_date)
+    )
+    docs = result.scalars().all()
+    return {"files": [DocumentResponse.model_validate(d) for d in docs]}
+
+
+@router.post("/files/refresh-expiry")
+async def refresh_expiry_flags(
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Bulk-refresh the `is_expired` flag on every document.
+    Called on app startup or manually from the Settings UI.
+    """
+    now = datetime.now(timezone.utc)
+    result = await session.execute(select(Document))
+    docs = result.scalars().all()
+    updated = 0
+    for doc in docs:
+        should_be_expired = doc.expiry_date is not None and doc.expiry_date <= now
+        if doc.is_expired != should_be_expired:
+            doc.is_expired = should_be_expired
+            updated += 1
+    if updated:
+        await session.commit()
+    return {"success": True, "updated": updated, "total": len(docs)}
