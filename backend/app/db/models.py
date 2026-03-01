@@ -73,3 +73,64 @@ class Setting(Base):
     
     def __repr__(self):
         return f"<Setting id={self.id} provider={self.ai_provider}>"
+
+
+class Document(Base):
+    """
+    Knowledge-base document metadata (Paper §3.4 — Automatic Document Indexing).
+
+    Tracks every file uploaded to the knowledge base alongside the vector
+    IDs stored in Qdrant so we can reconcile the two stores.
+    """
+    __tablename__ = "documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filename = Column(String(255), nullable=False, index=True)
+    original_filename = Column(String(255), nullable=True)
+    category = Column(String(50), nullable=False, index=True)  # Academic / Administrative / Educational
+    file_type = Column(String(10), nullable=False)              # .txt, .pdf, .docx
+    file_size = Column(Integer, nullable=False, default=0)      # bytes (extracted text)
+    original_size = Column(Integer, nullable=True)               # bytes (raw upload)
+    chunk_count = Column(Integer, nullable=False, default=0)
+    vector_ids = Column(ARRAY(String), nullable=False, default=[])  # Qdrant point UUIDs
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    upload_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # Document expiry management
+    expiry_date = Column(DateTime(timezone=True), nullable=True)   # NULL = never expires
+    is_expired = Column(Boolean, default=False, nullable=False)    # Cached expiry flag
+
+    # Relationships
+    uploader = relationship("User", foreign_keys=[uploaded_by])
+
+    def __repr__(self):
+        return f"<Document {self.filename} [{self.category}]>"
+
+
+class ScraperRun(Base):
+    """
+    Web scraper execution log.
+
+    Tracks each time the scraper runs — how many pages were attempted,
+    how many succeeded, total chunks indexed, and any errors.
+    """
+    __tablename__ = "scraper_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), nullable=False, default="running")  # running / completed / failed
+    pages_attempted = Column(Integer, nullable=False, default=0)
+    pages_succeeded = Column(Integer, nullable=False, default=0)
+    pages_failed = Column(Integer, nullable=False, default=0)
+    chunks_indexed = Column(Integer, nullable=False, default=0)
+    documents_created = Column(Integer, nullable=False, default=0)
+    errors = Column(ARRAY(String), nullable=False, default=[])
+    triggered_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationship
+    user = relationship("User", foreign_keys=[triggered_by])
+
+    def __repr__(self):
+        return f"<ScraperRun {self.id} [{self.status}]>"
