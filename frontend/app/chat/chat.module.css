@@ -279,6 +279,34 @@
   }
 }
 
+/* Streaming: blinking cursor */
+.streamCursor {
+  display: inline-block;
+  color: #667eea;
+  font-weight: bold;
+  animation: blink 0.7s step-end infinite;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* Streaming: tool-use status banner */
+.streamStatus {
+  font-size: 0.8rem;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
 .inputForm {
   display: flex;
   flex-direction: column;

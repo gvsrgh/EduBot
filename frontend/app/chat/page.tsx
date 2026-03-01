@@ -10,6 +10,8 @@ import styles from './chat.module.css';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  status?: string;   // tool-use status (e.g. "Searching...")
+  streaming?: boolean; // true while still receiving tokens
 }
 
 export default function ChatPage() {
@@ -51,28 +53,138 @@ export default function ChatPage() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setLoading(true);
 
-    try {
-      const response = await apiClient.sendMessage({
-        message: userMessage,
-        chat_id: chatId,
-      });
-
-      if (response.success) {
-        setChatId(response.chat_id);
-        setMessages(prev => [...prev, { role: 'assistant', content: response.message }]);
-      } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I was unable to process your request. Please try again.' }]);
-      }
-    } catch (err) {
+    // Authenticated users → try streaming; unauthenticated → non-streaming
+    if (user) {
+      // Add a placeholder assistant message that tokens will stream into
       setMessages(prev => [
         ...prev,
-        {
-          role: 'assistant',
-          content: `Error: ${err instanceof Error ? err.message : 'Failed to send message'}`,
-        },
+        { role: 'assistant', content: '', streaming: true },
       ]);
-    } finally {
-      setLoading(false);
+
+      try {
+        await apiClient.streamMessage(
+          { message: userMessage, chat_id: chatId },
+          {
+            onToken(token) {
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last.role === 'assistant') {
+                  updated[updated.length - 1] = {
+                    ...last,
+                    content: last.content + token,
+                  };
+                }
+                return updated;
+              });
+            },
+            onStatus(status) {
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last.role === 'assistant') {
+                  updated[updated.length - 1] = { ...last, status };
+                }
+                return updated;
+              });
+            },
+            onComplete(newChatId) {
+              setChatId(newChatId);
+              // Mark streaming done
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last.role === 'assistant') {
+                  updated[updated.length - 1] = {
+                    ...last,
+                    streaming: false,
+                    status: undefined,
+                  };
+                }
+                return updated;
+              });
+              loadChats();
+            },
+            onError(errMsg) {
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last.role === 'assistant') {
+                  updated[updated.length - 1] = {
+                    ...last,
+                    content: last.content || `Error: ${errMsg}`,
+                    streaming: false,
+                    status: undefined,
+                  };
+                }
+                return updated;
+              });
+            },
+          },
+        );
+      } catch (err) {
+        // Streaming failed — fall back to non-streaming
+        setMessages(prev => prev.filter(m => !(m.role === 'assistant' && m.streaming)));
+        try {
+          const response = await apiClient.sendAuthMessage({
+            message: userMessage,
+            chat_id: chatId,
+          });
+          if (response.success) {
+            setChatId(response.chat_id);
+            setMessages(prev => [
+              ...prev,
+              { role: 'assistant', content: response.message },
+            ]);
+            loadChats();
+          } else {
+            setMessages(prev => [
+              ...prev,
+              { role: 'assistant', content: 'Sorry, I was unable to process your request. Please try again.' },
+            ]);
+          }
+        } catch (fallbackErr) {
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: `Error: ${fallbackErr instanceof Error ? fallbackErr.message : 'Failed to send message'}`,
+            },
+          ]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Unauthenticated — non-streaming
+      try {
+        const response = await apiClient.sendMessage({
+          message: userMessage,
+          chat_id: chatId,
+        });
+        if (response.success) {
+          setChatId(response.chat_id);
+          setMessages(prev => [
+            ...prev,
+            { role: 'assistant', content: response.message },
+          ]);
+        } else {
+          setMessages(prev => [
+            ...prev,
+            { role: 'assistant', content: 'Sorry, I was unable to process your request. Please try again.' },
+          ]);
+        }
+      } catch (err) {
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `Error: ${err instanceof Error ? err.message : 'Failed to send message'}`,
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -136,16 +248,39 @@ export default function ChatPage() {
             </div>
           ))}
 
-          {loading && (
-            <div className={`${styles.message} ${styles.assistantMessage}`}>
-              <div className={styles.messageContent}>
-                <span className={styles.typing}>Thinking...</span>
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`${styles.message} ${
+                  msg.role === 'user' ? styles.userMessage : styles.assistantMessage
+                }`}
+              >
+                <div className={styles.messageContent}>
+                  {msg.role === 'assistant' ? (
+                    <>
+                      {msg.status && (
+                        <div className={styles.streamStatus}>
+                          🔍 {msg.status}
+                        </div>
+                      )}
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      {msg.streaming && <span className={styles.streamCursor}>▊</span>}
+                    </>
+                  ) : (
+                    msg.content
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          <div ref={messagesEndRef} />
-        </div>
+            {loading && !messages.some(m => m.streaming) && (
+              <div className={`${styles.message} ${styles.assistantMessage}`}>
+                <div className={styles.messageContent}>
+                  <span className={styles.typing}>Thinking...</span>
+                </div>
+              </div>
+            )}
 
         <form onSubmit={handleSubmit} className={styles.inputForm}>
           <textarea
