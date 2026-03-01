@@ -65,7 +65,7 @@
 /* Main Content */
 .content {
   flex: 1;
-  max-width: 1400px;
+  max-width: 1200px;
   width: 100%;
   margin: 0 auto;
   padding: var(--spacing-2xl);
@@ -856,24 +856,6 @@
 }
 
 /* ============================
-   Upload Tab - Two Column Layout
-   ============================ */
-.uploadTabLayout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-xl);
-  align-items: start;
-}
-
-.uploadColumn {
-  min-width: 0;
-}
-
-.kbColumn {
-  min-width: 0;
-}
-
-/* ============================
    Knowledge Base Component
    ============================ */
 .kbContainer {
@@ -1177,13 +1159,5 @@
   .cancelButton,
   .saveButton {
     width: 100%;
-  }
-
-  .uploadTabLayout {
-    grid-template-columns: 1fr;
-  }
-
-  .kbFileList {
-    max-height: 350px;
   }
 }

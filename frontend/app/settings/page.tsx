@@ -10,7 +10,7 @@ import KnowledgeBase from './components/KnowledgeBase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
-type TabType = 'upload' | 'model';
+type TabType = 'upload' | 'kb' | 'model';
 
 interface ProviderSettings {
   ai_provider: string;
@@ -244,6 +244,16 @@ export default function SettingsPage() {
               Upload Documents
             </button>
           )}
+          {hasUploadAccess && (
+            <button
+              type="button"
+              className={`${styles.tabButton} ${activeTab === 'kb' ? styles.tabButtonActive : ''}`}
+              onClick={() => setActiveTab('kb')}
+            >
+              <span className={styles.tabIcon}>📂</span>
+              Knowledge Base
+            </button>
+          )}
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'model' ? styles.tabButtonActive : ''}`}
@@ -256,16 +266,8 @@ export default function SettingsPage() {
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.tabContent}>
-            {activeTab === 'upload' && hasUploadAccess && (
-              <div className={styles.uploadTabLayout}>
-                <div className={styles.uploadColumn}>
-                  <UploadSection />
-                </div>
-                <div className={styles.kbColumn}>
-                  <KnowledgeBase />
-                </div>
-              </div>
-            )}
+            {activeTab === 'upload' && hasUploadAccess && <UploadSection />}
+            {activeTab === 'kb' && hasUploadAccess && <KnowledgeBase />}
             {activeTab === 'model' && (
               <ModelSection
                 formData={formData}
