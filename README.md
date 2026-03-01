@@ -65,7 +65,7 @@
 | # | Feature | Status | Notes |
 |---|---|---|---|
 | 16 | Next.js Responsive Web Interface | ✅ | Next.js 15, CSS Modules, mobile-friendly. |
-| 17 | Chat Interface | ✅ | Streaming responses, history sidebar, rename/delete. Paper: responses include source citations ("According to…"). |
+| 17 | Chat Interface | ✅ | Streaming responses, **conversation history sidebar** (list, load, rename, delete chats), uses authenticated `/chat/prompt` endpoint for logged-in users. Paper: responses include source citations ("According to…"). |
 | 18 | Settings Page | ⚠️ | Provider / model / API key config done. **Forgot-password flow** and **document expiry management** missing. |
 
 ---

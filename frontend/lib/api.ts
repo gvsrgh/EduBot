@@ -1,4 +1,4 @@
-import { AuthResponse, LoginRequest, RegisterRequest, MessageRequest, MessageResponse } from './types';
+import { AuthResponse, LoginRequest, RegisterRequest, MessageRequest, MessageResponse, Chat, ChatMessage } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
@@ -120,6 +120,34 @@ class ApiClient {
     return this.request<MessageResponse>('/chat/message', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async sendAuthMessage(data: MessageRequest): Promise<MessageResponse> {
+    return this.request<MessageResponse>('/chat/prompt', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getChats(): Promise<Chat[]> {
+    return this.request<Chat[]>('/chat/');
+  }
+
+  async getChatMessages(chatId: string): Promise<{ id: string; title: string; updated_at: string; messages: ChatMessage[] }> {
+    return this.request<{ id: string; title: string; updated_at: string; messages: ChatMessage[] }>(`/chat/messages/${chatId}`);
+  }
+
+  async renameChat(chatId: string, title: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/chat/rename/${chatId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title }),
+    });
+  }
+
+  async archiveChat(chatId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/chat/archive/${chatId}`, {
+      method: 'DELETE',
     });
   }
 }
