@@ -16,7 +16,12 @@ from app.vector_store import search_documents
 
 
 def _format_results(results: list, domain: str) -> str:
-    """Format search results into a readable string."""
+    """Format search results into a readable string with source citations.
+
+    Each result block is prefixed with a ``[SOURCE: filename | category | score]``
+    tag so the LLM can easily reference the originating document when composing
+    its answer.
+    """
     if not results:
         return (
             f"No relevant {domain} information found. "
@@ -25,7 +30,7 @@ def _format_results(results: list, domain: str) -> str:
 
     sections = []
     for r in results:
-        source = f"[{r['filename']} | {r['category']} | score: {r['score']}]"
+        source = f"[SOURCE: {r['filename']} | {r['category']} | relevance: {r['score']}]"
         sections.append(f"{source}\n{r['text']}")
 
     return "\n\n---\n\n".join(sections)

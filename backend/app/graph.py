@@ -19,7 +19,92 @@ from app.llm_provider import get_current_llm, llm_provider
 from app.tools import available_tools
 
 
-# Define the Agent's State
+def sanitize_messages(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """
+    Remove orphaned tool_calls that have no matching ToolMessage response.
+    
+    LLMs sometimes emit tool_calls in an AIMessage, but if the tool
+    execution fails or is skipped the follow-up ToolMessage is missing.
+    Passing such orphaned calls back into the model causes errors with
+    most providers.  This helper strips those dangling calls.
+    """
+    # Collect IDs of all ToolMessages in the conversation
+    tool_msg_ids: set[str] = set()
+    for m in messages:
+        if isinstance(m, ToolMessage) and hasattr(m, "tool_call_id"):
+            tool_msg_ids.add(m.tool_call_id)
+
+    cleaned: list[BaseMessage] = []
+    for m in messages:
+        if isinstance(m, AIMessage) and getattr(m, "tool_calls", None):
+            # Keep only tool_calls that have a corresponding ToolMessage
+            valid_calls = [tc for tc in m.tool_calls if tc["id"] in tool_msg_ids]
+            if valid_calls:
+                m = m.copy()
+                m.tool_calls = valid_calls
+                cleaned.append(m)
+            else:
+                # Drop tool_calls entirely but keep text content if any
+                if m.content:
+                    cleaned.append(AIMessage(content=m.content))
+                # else skip the message entirely
+        else:
+            cleaned.append(m)
+    return cleaned
+
+
+# ── Multi-hop result aggregation ──────────────────────────────────────
+
+_DOMAIN_TO_CATEGORY: dict[Domain, str] = {
+    Domain.ACADEMIC: "Academic",
+    Domain.ADMINISTRATIVE: "Administrative",
+    Domain.EDUCATIONAL: "Educational",
+}
+
+
+def _aggregate_multi_hop_results(
+    results_by_domain: dict[Domain, list[dict]],
+) -> str:
+    """
+    Merge parallel-retrieval results from multiple domains into a single
+    context block that can be injected into the LLM system prompt.
+
+    Results are grouped by domain, deduplicated by (filename, chunk_index),
+    and sorted within each group by descending relevance score.
+    """
+    seen: set[tuple[str, int]] = set()
+    sections: list[str] = []
+
+    for domain, hits in results_by_domain.items():
+        if not hits:
+            continue
+        # Sort best-first within each domain
+        sorted_hits = sorted(hits, key=lambda h: h["score"], reverse=True)
+        domain_lines: list[str] = []
+        for h in sorted_hits:
+            key = (h["filename"], h.get("chunk_index", 0))
+            if key in seen:
+                continue
+            seen.add(key)
+            source = (
+                f"[SOURCE: {h['filename']} | {h['category']} | relevance: {h['score']}]"
+            )
+            domain_lines.append(f"{source}\n{h['text']}")
+        if domain_lines:
+            header = f"=== {domain.value.upper()} DOMAIN ==="
+            sections.append(header + "\n" + "\n---\n".join(domain_lines))
+
+    if not sections:
+        return ""
+
+    return (
+        "[Multi-Hop Retrieval — Aggregated Cross-Domain Context]\n\n"
+        + "\n\n".join(sections)
+    )
+
+
+# ── Agent State ───────────────────────────────────────────────────────
+
 class AgentState(TypedDict):
     """State maintained throughout the conversation."""
     messages: Annotated[Sequence[BaseMessage], add_messages]
@@ -79,18 +164,38 @@ def agent_node(state: AgentState) -> AgentState:
         
         system_message = SystemMessage(content="""You are a helpful university chatbot assistant with access to ONLY local university information files.
 
-CRITICAL RULES:
-1. You can ONLY answer questions using information from the university knowledge base files
-2. You MUST use the available tools to search for information before answering
-3. If the tools return "The related data is not present" or no relevant information is found, you MUST inform the user that you don't have that information
-4. NEVER use your general knowledge or training data to answer questions
-5. NEVER make up or infer information that isn't explicitly in the files
+{routing_context}
+{multi_hop_prompt_block}
+HOW TO RESPOND:
+1. For ANY question, ALWAYS use the appropriate tool first to search the university knowledge base
+2. If the tools return relevant information, answer BASED ON that information and CITE THE SOURCE (see citation rules below)
+3. If the tools return "The related data is not present" or no relevant information is found, you MAY still answer the question using your general knowledge, BUT you MUST clearly add a disclaimer like:
+   "⚠️ *Note: This answer is based on general knowledge and was not retrieved from the university knowledge base.*"
+4. For multi-domain questions, synthesize information from ALL relevant domains into a single coherent answer
 
-Your capabilities:
-1. Search university files organized in categories:
-   - Academic: Calendars, schedules, dates, holidays
-   - Administrative: Policies, procedures, contact info, fees
-   - Educational: Course materials and resources
+--- CITATION RULES (MANDATORY) ---
+Tool results contain lines like `[SOURCE: filename | category | relevance: score]`.
+You MUST follow these citation rules when knowledge-base results are used:
+
+1. **Inline citations**: When using information from a source, cite it naturally in your answer.
+   Example: "According to *university_info.txt*, the tuition fee for B.Tech is ₹1,20,000 per year."
+2. **Sources section**: At the END of your response, add a horizontal rule followed by a markdown
+   sources list using this EXACT format:
+
+   ---
+   **Sources:**
+   - 📄 `filename.txt` (Category)
+   - 📄 `another_file.txt` (Category)
+
+   List ONLY the files you actually referenced. Do NOT list files that were returned but not used.
+3. If the answer is based entirely on general knowledge (no tool results used), do NOT add a Sources section.
+4. Never expose raw relevance scores to the user.
+--- END CITATION RULES ---
+
+Your knowledge base is organized in categories:
+1. Academic: Calendars, schedules, dates, holidays
+2. Administrative: Policies, procedures, contact info, fees, financial aid, scholarships, refunds
+3. Educational: Course materials and resources
 
 2. Available tools (YOU MUST USE THESE):
    - search_university_info: For policies, procedures, programs, fees, services (Administrative)
