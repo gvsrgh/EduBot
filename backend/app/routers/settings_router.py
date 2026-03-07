@@ -16,6 +16,17 @@ from app.config import ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR, ALLOWE
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
 
+@router.get("/provider/defaults")
+async def get_provider_defaults():
+    """
+    Return which AI providers have server-side default API keys configured in .env.
+    
+    Does NOT expose the actual keys — only boolean flags so the frontend
+    can show 'Default configured' badges and skip requiring user input.
+    """
+    return llm_provider.get_env_defaults()
+
+
 @router.post("/test-connection")
 async def test_connection(
     request: TestConnectionRequest,

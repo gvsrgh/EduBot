@@ -15,6 +15,13 @@ from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_core.language_models.chat_models import BaseChatModel
+from app.config import (
+    DEFAULT_AI_PROVIDER,
+    DEFAULT_OPENAI_API_KEY, DEFAULT_OPENAI_MODEL,
+    DEFAULT_GOOGLE_API_KEY, DEFAULT_GEMINI_MODEL,
+    DEFAULT_DEEPSEEK_API_KEY, DEFAULT_DEEPSEEK_MODEL,
+    DEFAULT_OLLAMA_URL, DEFAULT_OLLAMA_MODEL,
+)
 
 ProviderType = Literal["openai", "gemini", "ollama", "deepseek", "auto"]
 
@@ -23,17 +30,33 @@ class LLMProvider:
     """Manages dynamic LLM provider selection and fallback."""
     
     def __init__(self):
-        self.current_provider: str = "ollama"  # Default to local
+        # Use env default provider, fall back to 'ollama'
+        self.current_provider: str = DEFAULT_AI_PROVIDER if DEFAULT_AI_PROVIDER else "ollama"
+        
+        # Load defaults from .env, then allow runtime overrides
         self._api_keys = {
-            'openai': None,
-            'openai_model': 'gpt-4o-mini',
-            'gemini': None,
-            'gemini_model': 'gemini-2.5-flash',
-            'ollama_url': 'http://localhost:11434',
-            'ollama_model': 'llama3.1:8b',
-            'deepseek': None,
-            'deepseek_model': 'deepseek-chat'
+            'openai': DEFAULT_OPENAI_API_KEY or None,
+            'openai_model': DEFAULT_OPENAI_MODEL or 'gpt-4o-mini',
+            'gemini': DEFAULT_GOOGLE_API_KEY or None,
+            'gemini_model': DEFAULT_GEMINI_MODEL or 'gemini-2.5-flash',
+            'ollama_url': DEFAULT_OLLAMA_URL or 'http://localhost:11434',
+            'ollama_model': DEFAULT_OLLAMA_MODEL or 'llama3.1:8b',
+            'deepseek': DEFAULT_DEEPSEEK_API_KEY or None,
+            'deepseek_model': DEFAULT_DEEPSEEK_MODEL or 'deepseek-chat'
         }
+        
+        # Track which keys came from env (for the defaults endpoint)
+        self._env_defaults = {
+            'openai': bool(DEFAULT_OPENAI_API_KEY),
+            'gemini': bool(DEFAULT_GOOGLE_API_KEY),
+            'deepseek': bool(DEFAULT_DEEPSEEK_API_KEY),
+            'ollama': True,  # Ollama is always available locally
+            'default_provider': self.current_provider,
+        }
+    
+    def get_env_defaults(self) -> dict:
+        """Return which providers have server-side default API keys configured."""
+        return self._env_defaults.copy()
     
     def set_api_keys(
         self, 

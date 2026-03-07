@@ -39,6 +39,7 @@ export default function SettingsPage() {
   
   const [providerSettings, setProviderSettings] = useState<ProviderSettings | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [providerDefaults, setProviderDefaults] = useState<Record<string, boolean>>({});
   
   const [formData, setFormData] = useState({
     ai_provider: 'ollama',
@@ -64,6 +65,20 @@ export default function SettingsPage() {
       if (!token) {
         router.push('/login');
         return;
+      }
+
+      // Load provider defaults (which providers have server-side .env keys)
+      const defaultsResponse = await fetch(`${API_BASE}/settings/provider/defaults`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (defaultsResponse.ok) {
+        const defaultsData = await defaultsResponse.json();
+        setProviderDefaults(defaultsData);
+
+        // If a default provider is set on the server, pre-select it
+        if (defaultsData.default_provider) {
+          setFormData(prev => ({ ...prev, ai_provider: defaultsData.default_provider }));
+        }
       }
 
       // Load provider settings
@@ -262,6 +277,7 @@ export default function SettingsPage() {
                 setFormData={setFormData}
                 apiKeys={apiKeys}
                 setApiKeys={setApiKeys}
+                providerDefaults={providerDefaults}
               />
             )}
           </div>
