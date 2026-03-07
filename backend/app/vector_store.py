@@ -2,7 +2,7 @@
 Vector Store Module — Qdrant Cloud Integration
 
 Handles document embedding, storage, and semantic search using:
-- Sentence Transformers (all-MiniLM-L6-v2) for embeddings
+- FastEmbed (all-MiniLM-L6-v2) for lightweight ONNX-based embeddings
 - Qdrant Cloud for vector storage and similarity search
 
 Documents are chunked (500-1000 tokens, 10% overlap), embedded,
@@ -10,6 +10,7 @@ and stored with category metadata for domain-aware retrieval.
 """
 
 import uuid
+import numpy as np
 from typing import List, Optional
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -21,7 +22,7 @@ from qdrant_client.models import (
     MatchValue,
     PayloadSchemaType,
 )
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 
 # ── Configuration ──────────────────────────────────────────────
@@ -36,16 +37,16 @@ TOP_K = 5
 
 
 # ── Singleton Instances ───────────────────────────────────────
-_embedding_model: Optional[SentenceTransformer] = None
+_embedding_model: Optional[TextEmbedding] = None
 _qdrant_client: Optional[QdrantClient] = None
 
 
-def get_embedding_model() -> SentenceTransformer:
-    """Lazy-load the sentence transformer model."""
+def get_embedding_model() -> TextEmbedding:
+    """Lazy-load the FastEmbed model (ONNX-based, lightweight)."""
     global _embedding_model
     if _embedding_model is None:
         print(f"Loading embedding model: {EMBEDDING_MODEL}")
-        _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+        _embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
         print("Embedding model loaded")
     return _embedding_model
 
@@ -136,12 +137,10 @@ def chunk_text(
 
 # ── Embedding ─────────────────────────────────────────────────
 def embed_texts(texts: List[str]) -> List[List[float]]:
-    """Generate embeddings for a list of texts."""
+    """Generate embeddings for a list of texts using FastEmbed."""
     model = get_embedding_model()
-    embeddings = model.encode(
-        texts, show_progress_bar=False, normalize_embeddings=True
-    )
-    return embeddings.tolist()
+    embeddings = list(model.embed(texts))
+    return [emb.tolist() if isinstance(emb, np.ndarray) else list(emb) for emb in embeddings]
 
 
 # ── Indexing (Upload) ─────────────────────────────────────────
