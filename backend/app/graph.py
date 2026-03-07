@@ -8,8 +8,8 @@ This module creates the LangGraph workflow where:
 - The same LLM generates the final user-facing responses
 """
 
-from typing import Annotated, Sequence, TypedDict, Literal
-from langchain_core.messages import BaseMessage, SystemMessage, AIMessage
+from typing import Annotated, Sequence, TypedDict, Optional, Literal
+from langchain_core.messages import BaseMessage, SystemMessage, AIMessage, HumanMessage, ToolMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
@@ -17,6 +17,40 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from app.llm_provider import get_current_llm, llm_provider
 from app.tools import available_tools
+
+
+def sanitize_messages(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """
+    Remove orphaned tool_calls that have no matching ToolMessage response.
+    
+    LLMs sometimes emit tool_calls in an AIMessage, but if the tool
+    execution fails or is skipped the follow-up ToolMessage is missing.
+    Passing such orphaned calls back into the model causes errors with
+    most providers.  This helper strips those dangling calls.
+    """
+    # Collect IDs of all ToolMessages in the conversation
+    tool_msg_ids: set[str] = set()
+    for m in messages:
+        if isinstance(m, ToolMessage) and hasattr(m, "tool_call_id"):
+            tool_msg_ids.add(m.tool_call_id)
+
+    cleaned: list[BaseMessage] = []
+    for m in messages:
+        if isinstance(m, AIMessage) and getattr(m, "tool_calls", None):
+            # Keep only tool_calls that have a corresponding ToolMessage
+            valid_calls = [tc for tc in m.tool_calls if tc["id"] in tool_msg_ids]
+            if valid_calls:
+                m = m.copy()
+                m.tool_calls = valid_calls
+                cleaned.append(m)
+            else:
+                # Drop tool_calls entirely but keep text content if any
+                if m.content:
+                    cleaned.append(AIMessage(content=m.content))
+                # else skip the message entirely
+        else:
+            cleaned.append(m)
+    return cleaned
 
 
 # Define the Agent's State
@@ -100,9 +134,16 @@ Your capabilities:
    - search_educational_resources: For course materials and educational content
    - search_all_domains: Search ALL categories at once when the question spans multiple topics or the domain is unclear
 
-Response Guidelines:
-- For ANY question, ALWAYS use the appropriate tool first
-- Questions about tuition, payments, fees → use search_university_info
+Available tools (USE THESE FIRST):
+- search_university_info: For policies, procedures, programs, fees, financial aid, services (Administrative)
+- search_academic_calendar: For dates, holidays, deadlines, events (Academic)
+- check_if_date_is_holiday: To verify if a specific date is a holiday
+- get_university_contact_info: For department contact information
+- search_educational_resources: For course materials and educational content
+- search_all_domains: For queries spanning multiple topics or unclear domain
+
+Tool selection guide:
+- Questions about tuition, payments, fees, scholarships, refunds → use search_university_info
 - Questions about dates, holidays, deadlines → use search_academic_calendar or check_if_date_is_holiday
 - Questions about contact info → use get_university_contact_info
 - Questions about courses, materials → use search_educational_resources

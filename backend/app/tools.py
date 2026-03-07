@@ -2,12 +2,12 @@
 RAG Retrieval Tools — Qdrant Semantic Search
 
 Tools for semantic similarity search across embedded documents.
-Used by the LangGraph agent to retrieve relevant information
-from the vector knowledge base.
+Uses Qdrant vector store for cosine-similarity retrieval with
+all-MiniLM-L6-v2 embeddings.
 
 Categories:
 - Academic: calendars, schedules, dates
-- Administrative: policies, procedures, contact info
+- Administrative: policies, procedures, contact info, fees
 - Educational: course materials, resources
 """
 
@@ -16,7 +16,7 @@ from app.vector_store import search_documents
 
 
 def _format_results(results: list, domain: str) -> str:
-    """Format search results into a readable string."""
+    """Format search results into a readable string with source citations."""
     if not results:
         return (
             f"No relevant {domain} information found. "
@@ -33,21 +33,24 @@ def _format_results(results: list, domain: str) -> str:
 
 @tool
 def search_university_info(query: str) -> str:
-    """Search administrative information for university policies, procedures, programs, fees, services, and contact information."""
+    """Search administrative information for university policies, procedures,
+    programs, fees, financial aid, services, and contact information."""
     results = search_documents(query, category="Administrative")
     return _format_results(results, "administrative")
 
 
 @tool
 def search_academic_calendar(query: str) -> str:
-    """Search academic files for dates, holidays, deadlines, exam schedules, and academic events."""
+    """Search academic files for dates, holidays, deadlines, exam schedules,
+    and academic events."""
     results = search_documents(query, category="Academic")
     return _format_results(results, "academic")
 
 
 @tool
 def check_if_date_is_holiday(date_str: str) -> str:
-    """Check if a specific date is a university holiday by searching the academic calendar."""
+    """Check if a specific date is a university holiday by searching the
+    academic calendar."""
     results = search_documents(f"{date_str} holiday", category="Academic")
     return _format_results(results, "holiday")
 
@@ -61,14 +64,16 @@ def get_university_contact_info(department: str) -> str:
 
 @tool
 def search_educational_resources(query: str) -> str:
-    """Search educational resource files for course materials, syllabi, study guides, and educational content."""
+    """Search educational resource files for course materials, syllabi,
+    study guides, and educational content."""
     results = search_documents(query, category="Educational")
     return _format_results(results, "educational")
 
 
 @tool
 def search_all_domains(query: str) -> str:
-    """Search across ALL domains (academic, administrative, educational) when the query spans multiple topics or the domain is unclear."""
+    """Search across ALL domains (academic, administrative, educational) when
+    the query spans multiple topics or the domain is unclear."""
     results = search_documents(query, category=None)
     return _format_results(results, "university")
 
