@@ -87,3 +87,6 @@ available_tools = [
     search_educational_resources,
     search_all_domains,
 ]
+
+# Registry for name-based lookup (used by query_router)
+TOOL_REGISTRY: dict[str, object] = {t.name: t for t in available_tools}
