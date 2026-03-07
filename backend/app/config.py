@@ -46,6 +46,17 @@ EDUCATIONAL_DIR = DATA_DIR / "Educational"
 ALLOWED_EXTENSIONS = {'.txt'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+# Default AI Provider & API Keys (university-level defaults from .env)
+DEFAULT_AI_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "")
+DEFAULT_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+DEFAULT_OPENAI_MODEL = os.getenv("OPENAI_MODEL", "")
+DEFAULT_GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "")
+DEFAULT_DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+DEFAULT_DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "")
+DEFAULT_OLLAMA_URL = os.getenv("OLLAMA_URL", "")
+DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "")
+
 # Qdrant Vector Database
 QDRANT_URL = os.getenv("QDRANT_URL", "")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")

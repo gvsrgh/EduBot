@@ -23,13 +23,15 @@ interface ModelSectionProps {
     deepseek_model: string;
   };
   setApiKeys: (keys: any) => void;
+  providerDefaults?: Record<string, boolean>;
 }
 
 export default function ModelSection({ 
   formData, 
   setFormData, 
   apiKeys, 
-  setApiKeys 
+  setApiKeys,
+  providerDefaults = {},
 }: ModelSectionProps) {
   const router = useRouter();
   
@@ -87,7 +89,7 @@ export default function ModelSection({
   };
   
   const testOpenAIConnection = async () => {
-    if (!apiKeys.openai_key) {
+    if (!apiKeys.openai_key && !providerDefaults.openai) {
       setOpenaiTestStatus('✗ Please enter an OpenAI API key first');
       setTimeout(() => setOpenaiTestStatus(''), 3000);
       return;
@@ -134,7 +136,7 @@ export default function ModelSection({
   };
   
   const testGeminiConnection = async () => {
-    if (!apiKeys.gemini_key) {
+    if (!apiKeys.gemini_key && !providerDefaults.gemini) {
       setGeminiTestStatus('✗ Please enter a Gemini API key first');
       setTimeout(() => setGeminiTestStatus(''), 3000);
       return;
@@ -181,7 +183,7 @@ export default function ModelSection({
   };
 
   const testDeepSeekConnection = async () => {
-    if (!apiKeys.deepseek_key) {
+    if (!apiKeys.deepseek_key && !providerDefaults.deepseek) {
       setDeepseekTestStatus('✗ Please enter a DeepSeek API key first');
       setTimeout(() => setDeepseekTestStatus(''), 3000);
       return;
@@ -241,6 +243,19 @@ export default function ModelSection({
           We do NOT store your API keys on our servers.
         </div>
       </div>
+
+      {/* Server Defaults Banner */}
+      {(providerDefaults.openai || providerDefaults.gemini || providerDefaults.deepseek) && (
+        <div className={styles.privacyNotice} style={{ borderLeft: '4px solid #10b981' }}>
+          <span className={styles.lockIcon}>🏫</span>
+          <div>
+            <strong>University Defaults Available:</strong> The server has pre-configured API keys for{' '}
+            {[providerDefaults.openai && 'OpenAI', providerDefaults.gemini && 'Gemini', providerDefaults.deepseek && 'DeepSeek'].filter(Boolean).join(', ')}.
+            You can use them by selecting the provider — no personal API key needed.
+            Choose <strong>Auto</strong> to use them with automatic fallback.
+          </div>
+        </div>
+      )}
     
       <div className={styles.formGroup}>
         <label htmlFor="ai_provider">Select Provider</label>
@@ -320,6 +335,15 @@ export default function ModelSection({
       {/* OpenAI Configuration */}
       {formData.ai_provider === 'openai' && (
         <div className={styles.providerConfig}>
+          {providerDefaults.openai && (
+            <div className={styles.privacyNotice} style={{ borderLeft: '4px solid #10b981' }}>
+              <span className={styles.lockIcon}>✅</span>
+              <div>
+                <strong>Server default configured.</strong> A university-provided OpenAI key is active.
+                You can still enter your own key below to override it.
+              </div>
+            </div>
+          )}
           <div className={styles.formGroup}>
             <label htmlFor="openai_key">OpenAI API Key</label>
             <input
@@ -331,7 +355,7 @@ export default function ModelSection({
                 setApiKeys(newKeys);
                 localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
               }}
-              placeholder="sk-..." 
+              placeholder={providerDefaults.openai ? "Using server default (enter to override)" : "sk-..."}
               className={styles.input}
             />
             <small className={styles.hint}>
@@ -360,7 +384,7 @@ export default function ModelSection({
             <button
               type="button"
               onClick={testOpenAIConnection}
-              disabled={testingOpenai || !apiKeys.openai_key}
+              disabled={testingOpenai || (!apiKeys.openai_key && !providerDefaults.openai)}
               className={styles.testButton}
             >
               {testingOpenai ? 'Testing...' : '🔍 Test Connection'}
@@ -377,6 +401,15 @@ export default function ModelSection({
       {/* Gemini Configuration */}
       {formData.ai_provider === 'gemini' && (
         <div className={styles.providerConfig}>
+          {providerDefaults.gemini && (
+            <div className={styles.privacyNotice} style={{ borderLeft: '4px solid #10b981' }}>
+              <span className={styles.lockIcon}>✅</span>
+              <div>
+                <strong>Server default configured.</strong> A university-provided Gemini key is active.
+                You can still enter your own key below to override it.
+              </div>
+            </div>
+          )}
           <div className={styles.formGroup}>
             <label htmlFor="gemini_key">Google Gemini API Key</label>
             <input
@@ -388,7 +421,7 @@ export default function ModelSection({
                 setApiKeys(newKeys);
                 localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
               }}
-              placeholder="AI..." 
+              placeholder={providerDefaults.gemini ? "Using server default (enter to override)" : "AI..."}
               className={styles.input}
             />
             <small className={styles.hint}>
@@ -418,7 +451,7 @@ export default function ModelSection({
             <button
               type="button"
               onClick={testGeminiConnection}
-              disabled={testingGemini || !apiKeys.gemini_key}
+              disabled={testingGemini || (!apiKeys.gemini_key && !providerDefaults.gemini)}
               className={styles.testButton}
             >
               {testingGemini ? 'Testing...' : '🔍 Test Connection'}
@@ -435,6 +468,15 @@ export default function ModelSection({
       {/* DeepSeek Configuration */}
       {formData.ai_provider === 'deepseek' && (
         <div className={styles.providerConfig}>
+          {providerDefaults.deepseek && (
+            <div className={styles.privacyNotice} style={{ borderLeft: '4px solid #10b981' }}>
+              <span className={styles.lockIcon}>✅</span>
+              <div>
+                <strong>Server default configured.</strong> A university-provided DeepSeek key is active.
+                You can still enter your own key below to override it.
+              </div>
+            </div>
+          )}
           <div className={styles.formGroup}>
             <label htmlFor="deepseek_key">DeepSeek API Key</label>
             <input
@@ -446,7 +488,7 @@ export default function ModelSection({
                 setApiKeys(newKeys);
                 localStorage.setItem('edubot_api_keys', JSON.stringify(newKeys));
               }}
-              placeholder="sk-..."
+              placeholder={providerDefaults.deepseek ? "Using server default (enter to override)" : "sk-..."}
               className={styles.input}
             />
             <small className={styles.hint}>
@@ -479,7 +521,7 @@ export default function ModelSection({
             <button
               type="button"
               onClick={testDeepSeekConnection}
-              disabled={testingDeepseek || !apiKeys.deepseek_key}
+              disabled={testingDeepseek || (!apiKeys.deepseek_key && !providerDefaults.deepseek)}
               className={styles.testButton}
             >
               {testingDeepseek ? 'Testing...' : '🔍 Test Connection'}
