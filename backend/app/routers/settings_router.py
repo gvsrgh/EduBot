@@ -12,6 +12,8 @@ from app.schemas import (
     ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate,
     TestConnectionRequest, DocumentResponse, DocumentListResponse,
     DocumentExpiryUpdate,
+    ScraperPageResult, ScraperRunResponse, ScraperConfigResponse,
+    ScraperConfigUpdate, ScraperUrlAdd, ScraperUrlRemove,
 )
 from app.auth import get_current_user, get_current_admin_user
 from app.llm_provider import llm_provider
@@ -679,3 +681,193 @@ async def refresh_expiry_flags(
     if updated:
         await session.commit()
     return {"success": True, "updated": updated, "total": len(docs)}
+
+
+# -----------------------------------------------------------------------
+# Web Scraper — Official College Website
+# -----------------------------------------------------------------------
+
+@router.get("/scraper/config", response_model=ScraperConfigResponse)
+async def get_scraper_config(
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the current list of target URLs for the web scraper."""
+    from app.web_scraper import scraper_config
+    return ScraperConfigResponse(urls=scraper_config.get_urls())
+
+
+@router.put("/scraper/config", response_model=ScraperConfigResponse)
+async def update_scraper_config(
+    body: ScraperConfigUpdate,
+    current_user: dict = Depends(get_current_admin_user),
+):
+    """Replace the full URL list (admin only)."""
+    from app.web_scraper import scraper_config
+    scraper_config.set_urls(body.urls)
+    return ScraperConfigResponse(urls=scraper_config.get_urls())
+
+
+@router.post("/scraper/config/add", response_model=ScraperConfigResponse)
+async def add_scraper_url(
+    body: ScraperUrlAdd,
+    current_user: dict = Depends(get_current_user),
+):
+    """Add a single URL to the scraper target list."""
+    user_email = current_user.get("email", "")
+    if user_email.endswith("@pvpsit.ac.in"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Scraper management is not allowed for @pvpsit.ac.in users",
+        )
+    from app.web_scraper import scraper_config
+    added = scraper_config.add_url(body.url)
+    if not added:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="URL already exists or is invalid",
+        )
+    return ScraperConfigResponse(urls=scraper_config.get_urls())
+
+
+@router.post("/scraper/config/remove", response_model=ScraperConfigResponse)
+async def remove_scraper_url(
+    body: ScraperUrlRemove,
+    current_user: dict = Depends(get_current_user),
+):
+    """Remove a single URL from the scraper target list."""
+    user_email = current_user.get("email", "")
+    if user_email.endswith("@pvpsit.ac.in"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Scraper management is not allowed for @pvpsit.ac.in users",
+        )
+    from app.web_scraper import scraper_config
+    removed = scraper_config.remove_url(body.url)
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="URL not found in the target list",
+        )
+    return ScraperConfigResponse(urls=scraper_config.get_urls())
+
+
+@router.post("/scraper/scrape", response_model=ScraperRunResponse)
+async def trigger_scrape(
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Trigger an immediate scrape of all configured URLs.
+
+    Scrapes each page, saves .txt files to the data directory,
+    indexes content in Qdrant, and creates Document records in PostgreSQL.
+    Returns a ScraperRun summary.
+    """
+    user_email = current_user.get("email", "")
+    if user_email.endswith("@pvpsit.ac.in"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Scraper is not allowed for @pvpsit.ac.in users",
+        )
+
+    from app.web_scraper import scraper_config, run_scrape
+    from app.db.models import ScraperRun
+
+    urls = scraper_config.get_urls()
+    user_id = current_user.get("user_id")
+
+    # Create run record
+    run = ScraperRun(
+        pages_attempted=len(urls),
+        triggered_by=user_id,
+    )
+    session.add(run)
+    await session.flush()
+
+    try:
+        results = await run_scrape(urls)
+
+        docs_created = 0
+        errors: list[str] = []
+        total_chunks = 0
+        succeeded = 0
+        failed = 0
+
+        for pr in results:
+            if pr.success:
+                succeeded += 1
+                total_chunks += pr.chunks
+
+                # Create / update Document record in PostgreSQL
+                existing = await session.execute(
+                    select(Document).where(
+                        and_(
+                            Document.filename == pr.filename,
+                            Document.category == pr.category,
+                        )
+                    )
+                )
+                doc = existing.scalar_one_or_none()
+                if doc:
+                    # Update existing record
+                    doc.file_size = pr.text_length
+                    doc.chunk_count = pr.chunks
+                    doc.updated_at = datetime.now(timezone.utc)
+                else:
+                    # Create new record
+                    doc = Document(
+                        filename=pr.filename,
+                        original_filename=pr.url,
+                        category=pr.category,
+                        file_type=".txt",
+                        file_size=pr.text_length,
+                        chunk_count=pr.chunks,
+                        vector_ids=[],
+                        uploaded_by=user_id,
+                    )
+                    session.add(doc)
+                    docs_created += 1
+
+                if pr.error:
+                    errors.append(f"{pr.url}: {pr.error}")
+            else:
+                failed += 1
+                errors.append(f"{pr.url}: {pr.error}")
+
+        run.finished_at = datetime.now(timezone.utc)
+        run.status = "completed"
+        run.pages_succeeded = succeeded
+        run.pages_failed = failed
+        run.chunks_indexed = total_chunks
+        run.documents_created = docs_created
+        run.errors = errors
+
+        await session.commit()
+        await session.refresh(run)
+        return ScraperRunResponse.model_validate(run)
+
+    except Exception as e:
+        run.finished_at = datetime.now(timezone.utc)
+        run.status = "failed"
+        run.errors = [str(e)]
+        await session.commit()
+        await session.refresh(run)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Scraper failed: {e}",
+        )
+
+
+@router.get("/scraper/status", response_model=list[ScraperRunResponse])
+async def get_scraper_status(
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Return the last 10 scraper runs (most recent first)."""
+    from app.db.models import ScraperRun
+
+    result = await session.execute(
+        select(ScraperRun).order_by(ScraperRun.started_at.desc()).limit(10)
+    )
+    runs = result.scalars().all()
+    return [ScraperRunResponse.model_validate(r) for r in runs]

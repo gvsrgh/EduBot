@@ -227,3 +227,60 @@ class ResetPasswordRequest(BaseModel):
 class DocumentExpiryUpdate(BaseModel):
     """Request schema for updating document expiry date."""
     expiry_date: Optional[datetime] = None  # None = remove expiry (never expires)
+
+
+# ── Web Scraper Schemas ────────────────────────────────────────────
+
+class ScraperPageResult(BaseModel):
+    """Result of scraping a single page."""
+    url: str
+    success: bool
+    category: str = ""
+    filename: str = ""
+    text_length: int = 0
+    chunks: int = 0
+    error: str = ""
+
+
+class ScraperRunResponse(BaseModel):
+    """Response for a scraper run."""
+    id: str
+    started_at: datetime
+    finished_at: Optional[datetime] = None
+    status: str
+    pages_attempted: int
+    pages_succeeded: int
+    pages_failed: int
+    chunks_indexed: int
+    documents_created: int
+    errors: List[str] = []
+
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return v
+
+    class Config:
+        from_attributes = True
+
+
+class ScraperConfigResponse(BaseModel):
+    """Response for scraper configuration."""
+    urls: List[str]
+
+
+class ScraperConfigUpdate(BaseModel):
+    """Request to update scraper target URLs."""
+    urls: List[str] = Field(..., min_length=1)
+
+
+class ScraperUrlAdd(BaseModel):
+    """Request to add a single URL."""
+    url: str = Field(..., min_length=8)
+
+
+class ScraperUrlRemove(BaseModel):
+    """Request to remove a single URL."""
+    url: str

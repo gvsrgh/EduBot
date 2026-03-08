@@ -18,6 +18,7 @@
 | `feature/source-citations` | *(current)* | Structured source tags in tools, citation rules in LLM prompt, styled source badges in chat UI |
 | `feature/document-expiry-management` | ❌ **Not merged** | Document expiry: `expiry_date`/`is_expired` on Document model, PATCH/GET expiry endpoints, inline expiry editor in KB UI |
 | `feature/streaming-responses` | ❌ **Not merged** | Frontend SSE streaming: `streamMessage()` in API client, real-time token rendering, tool-use status indicators, blinking cursor |
+| `feature/web-scraper` | ❌ **Not merged** | Web scraper for official college website: BeautifulSoup scraper, auto-categorisation, Qdrant indexing, admin UI with URL management and scrape history |
 | `feature/vector-embeddings` | ✅ Superseded | `7c3447d` — Superseded by `feature/rag-vector-embeddings` (clean rewrite) |
 | `docs/project-status` | ❌ **Not merged** | `d5c4e5c` — README with paper-accurate feature status |
 | `bugfixes` | ❌ **Not merged** | `7655af5` — Security, bug, and code quality fixes |
@@ -126,6 +127,27 @@
 - [x] `page.tsx`: "Thinking..." indicator hidden when a streaming message is active
 - [x] `chat.module.css`: `.streamCursor` with blink animation, `.streamStatus` styled pill
 
+### Web Scraper — Official College Website (Issue #21)
+**Status:** ✅ Implemented on `feature/web-scraper`  
+**Branch:** `feature/web-scraper`  
+**Contributor:** gvsrgh
+
+- [x] Create `web_scraper.py` module with BeautifulSoup HTML parsing and httpx async fetcher
+- [x] Default target URLs for pvpsiddhartha.ac.in (homepage, departments, admissions, placements, etc.)
+- [x] `clean_html()` — strip scripts/styles/nav/footer, extract meaningful text
+- [x] `categorize_content()` — regex heuristics to auto-assign Academic/Administrative/Educational
+- [x] `run_scrape()` — async pipeline: fetch → clean → save .txt → index in Qdrant
+- [x] `ScraperConfig` in-memory singleton for URL management
+- [x] `ScraperRun` PostgreSQL model for tracking scrape history
+- [x] `POST /settings/scraper/scrape` — trigger manual scrape, create Document records
+- [x] `GET /settings/scraper/status` — last 10 scrape runs
+- [x] `GET/PUT /settings/scraper/config` — read/replace target URL list
+- [x] `POST /settings/scraper/config/add` & `/remove` — per-URL management
+- [x] `WebScraper.tsx` settings component with URL manager, "Scrape Now" button, run history
+- [x] Scraper tab added to Settings page (visible to admin users)
+- [x] Full CSS styles for scraper UI (URL list, history cards, spinner)
+- [x] `beautifulsoup4` added to `requirements.txt`
+
 ---
 
 ## 🔴 Critical / High Priority
@@ -189,13 +211,14 @@
 - [x] Expiry flags auto-refreshed on app startup
 
 ### 7. Web Scraper — Official College Website (Issue #21)
-**Status:** ❌ Not implemented
+**Status:** ✅ Implemented on `feature/web-scraper`
 
-- [ ] Implement scraper (BeautifulSoup / Scrapy) for official college website
-- [ ] Parse and clean scraped content
-- [ ] Feed into knowledge base
-- [ ] Schedule periodic sync
-- [ ] Add admin UI to trigger manual scrape
+- [x] Implement scraper (BeautifulSoup / httpx) for official college website
+- [x] Parse and clean scraped content
+- [x] Feed into knowledge base (Qdrant + PostgreSQL)
+- [x] Add admin UI to trigger manual scrape
+- [x] URL management (add/remove target pages)
+- [x] Scrape history with error tracking
 
 ### 8. Streaming Chat (Paper §3.6)
 **Status:** ✅ Implemented on `feature/streaming-responses`
@@ -235,9 +258,9 @@
 | Priority | Count | Items |
 |---|---|---|
 | 🔴 Critical | 0 | — |
-| 🟡 Medium | 1 | Web scraper |
+| 🟡 Medium | 0 | — |
 | 🟢 Low | 2 | Docker, Production scaling |
-| **Total** | **3** | |
+| **Total** | **2** | |
 
 ### By Paper Alignment (IC-ECBE 2026)
 
@@ -263,5 +286,6 @@
 | Source Citations | ✅ Done — structured source tags + citation prompt + styled UI on `feature/source-citations` |
 | Document Expiry Management | ✅ Done — `expiry_date`/`is_expired` on Document model, PATCH/GET/POST expiry endpoints, inline KB UI on `feature/document-expiry-management` |
 | Streaming Responses | ✅ Done — SSE streaming with real-time token rendering, tool-use status, blinking cursor on `feature/streaming-responses` |
+| Web Scraper | ✅ Done — BeautifulSoup scraper with auto-categorisation, Qdrant indexing, admin UI on `feature/web-scraper` |
 | Docker Containerization | ❌ Not implemented |
 | Production Scaling | ❌ Not implemented |

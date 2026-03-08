@@ -106,3 +106,31 @@ class Document(Base):
 
     def __repr__(self):
         return f"<Document {self.filename} [{self.category}]>"
+
+
+class ScraperRun(Base):
+    """
+    Web scraper execution log.
+
+    Tracks each time the scraper runs — how many pages were attempted,
+    how many succeeded, total chunks indexed, and any errors.
+    """
+    __tablename__ = "scraper_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), nullable=False, default="running")  # running / completed / failed
+    pages_attempted = Column(Integer, nullable=False, default=0)
+    pages_succeeded = Column(Integer, nullable=False, default=0)
+    pages_failed = Column(Integer, nullable=False, default=0)
+    chunks_indexed = Column(Integer, nullable=False, default=0)
+    documents_created = Column(Integer, nullable=False, default=0)
+    errors = Column(ARRAY(String), nullable=False, default=[])
+    triggered_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationship
+    user = relationship("User", foreign_keys=[triggered_by])
+
+    def __repr__(self):
+        return f"<ScraperRun {self.id} [{self.status}]>"
