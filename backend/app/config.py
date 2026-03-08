@@ -49,7 +49,7 @@ ADMINISTRATIVE_DIR = DATA_DIR / "Administrative"
 EDUCATIONAL_DIR = DATA_DIR / "Educational"
 
 # Upload configuration
-ALLOWED_EXTENSIONS = {'.txt'}
+ALLOWED_EXTENSIONS = {'.txt', '.pdf', '.docx'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 # Default AI Provider & API Keys (university-level defaults from .env)

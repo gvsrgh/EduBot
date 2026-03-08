@@ -49,9 +49,10 @@ export default function UploadSection() {
   };
 
   const handleFiles = (files: File[]) => {
-    // Filter for .txt files only
+    // Filter for supported file types: .txt, .pdf, .docx
+    const allowedExtensions = ['.txt', '.pdf', '.docx'];
     const validFiles = files.filter(file => 
-      file.name.toLowerCase().endsWith('.txt')
+      allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
     );
 
     // Filter for max size (10MB)
@@ -129,6 +130,8 @@ export default function UploadSection() {
           message: `Successfully uploaded ${successCount} file${successCount > 1 ? 's' : ''}!`
         });
         setUploadedFiles([]);
+        // Notify KnowledgeBase component to refresh
+        window.dispatchEvent(new Event('kb-files-updated'));
       } else if (successCount > 0 && failCount > 0) {
         setUploadStatus({
           show: true,
@@ -207,13 +210,13 @@ export default function UploadSection() {
         <div className={styles.uploadIcon}>📄</div>
         <p className={styles.uploadText}>Drag & drop files here</p>
         <p className={styles.uploadHint}>or click to browse</p>
-        <p className={styles.uploadSupported}>Supports TXT files only (Max 10MB each)</p>
+        <p className={styles.uploadSupported}>Supports PDF, DOCX, and TXT files (Max 10MB each)</p>
         
         <input
           type="file"
           id="fileInput"
           multiple
-          accept=".txt"
+          accept=".txt,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={handleFileSelect}
           className={styles.fileInput}
         />
@@ -283,7 +286,9 @@ export default function UploadSection() {
           <li><strong>Academic:</strong> Calendars, schedules, holidays, deadlines, events</li>
           <li><strong>Administrative:</strong> Policies, procedures, contact information, fees</li>
           <li><strong>Educational:</strong> Course materials, syllabi, study guides, resources</li>
-          <li>Only TXT files are supported (PDF and DOCX coming soon)</li>
+          <li>Supports <strong>PDF</strong>, <strong>DOCX</strong>, and <strong>TXT</strong> files</li>
+          <li>PDF and DOCX files are automatically converted to text for the knowledge base</li>
+          <li>Scanned PDFs are processed with OCR when Tesseract is available</li>
           <li>Maximum file size: 10MB per file</li>
           <li>Content will be available for all users in your organization</li>
         </ul>
