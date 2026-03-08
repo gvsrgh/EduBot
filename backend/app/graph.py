@@ -6,9 +6,13 @@ This module creates the LangGraph workflow where:
 - It decides when to use tools to retrieve information
 - Local file tools provide university-specific information
 - The same LLM generates the final user-facing responses
+- Multi-hop reasoning performs parallel retrieval across domains and
+  aggregates results before the LLM composes its answer
 """
 
 from typing import Annotated, Sequence, TypedDict, Optional, Literal
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from langchain_core.messages import BaseMessage, SystemMessage, AIMessage, HumanMessage, ToolMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
@@ -18,7 +22,13 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from app.llm_provider import get_current_llm, llm_provider
 from app.tools import available_tools
 from app.config import DATABASE_URL_SYNC
-from app.query_router import classify_query, get_routing_context, get_domain_tools_for_query
+from app.query_router import (
+    classify_query,
+    get_routing_context,
+    get_domain_tools_for_query,
+    Domain,
+)
+from app.vector_store import search_documents
 
 
 def sanitize_messages(messages: list[BaseMessage]) -> list[BaseMessage]:
@@ -55,10 +65,137 @@ def sanitize_messages(messages: list[BaseMessage]) -> list[BaseMessage]:
     return cleaned
 
 
-# Define the Agent's State
+# ── Multi-hop result aggregation ──────────────────────────────────────
+
+_DOMAIN_TO_CATEGORY: dict[Domain, str] = {
+    Domain.ACADEMIC: "Academic",
+    Domain.ADMINISTRATIVE: "Administrative",
+    Domain.EDUCATIONAL: "Educational",
+}
+
+
+def _aggregate_multi_hop_results(
+    results_by_domain: dict[Domain, list[dict]],
+) -> str:
+    """
+    Merge parallel-retrieval results from multiple domains into a single
+    context block that can be injected into the LLM system prompt.
+
+    Results are grouped by domain, deduplicated by (filename, chunk_index),
+    and sorted within each group by descending relevance score.
+    """
+    seen: set[tuple[str, int]] = set()
+    sections: list[str] = []
+
+    for domain, hits in results_by_domain.items():
+        if not hits:
+            continue
+        # Sort best-first within each domain
+        sorted_hits = sorted(hits, key=lambda h: h["score"], reverse=True)
+        domain_lines: list[str] = []
+        for h in sorted_hits:
+            key = (h["filename"], h.get("chunk_index", 0))
+            if key in seen:
+                continue
+            seen.add(key)
+            source = (
+                f"[{h['filename']} | {h['category']} | score: {h['score']}]"
+            )
+            domain_lines.append(f"{source}\n{h['text']}")
+        if domain_lines:
+            header = f"=== {domain.value.upper()} DOMAIN ==="
+            sections.append(header + "\n" + "\n---\n".join(domain_lines))
+
+    if not sections:
+        return ""
+
+    return (
+        "[Multi-Hop Retrieval — Aggregated Cross-Domain Context]\n\n"
+        + "\n\n".join(sections)
+    )
+
+
+# ── Agent State ───────────────────────────────────────────────────────
+
 class AgentState(TypedDict):
     """State maintained throughout the conversation."""
     messages: Annotated[Sequence[BaseMessage], add_messages]
+    multi_hop_context: str  # Pre-retrieved cross-domain context (empty if N/A)
+
+
+def multi_hop_retrieval_node(state: AgentState) -> AgentState:
+    """
+    Multi-Hop Retrieval Node — Parallel Cross-Domain Search (Paper §4.3)
+
+    For multi-domain queries this node runs **before** the agent LLM.
+    It performs parallel semantic search across every matched domain
+    using ``concurrent.futures`` and aggregates the results into a
+    single context block stored in ``state["multi_hop_context"]``.
+
+    Single-domain queries pass through without modification so the
+    normal tool-calling flow handles them.
+    """
+    print("---NODE: MULTI-HOP RETRIEVAL CHECK---")
+
+    # Extract the latest user message
+    user_messages = [
+        m for m in state["messages"]
+        if hasattr(m, "type") and m.type == "human"
+    ]
+    if not user_messages:
+        return {"multi_hop_context": ""}
+
+    latest_query = (
+        user_messages[-1].content
+        if hasattr(user_messages[-1], "content")
+        else str(user_messages[-1])
+    )
+
+    routing_result = classify_query(latest_query)
+
+    if not routing_result.is_multi_domain:
+        print("Single-domain query — skipping parallel retrieval")
+        return {"multi_hop_context": ""}
+
+    matched_domains = routing_result.domains
+    print(
+        f"Multi-domain query detected — launching parallel retrieval "
+        f"across {[d.value for d in matched_domains]}"
+    )
+
+    # ── Parallel retrieval across matched domains ──────────────
+    results_by_domain: dict[Domain, list[dict]] = {}
+
+    with ThreadPoolExecutor(max_workers=len(matched_domains)) as pool:
+        future_to_domain = {
+            pool.submit(
+                search_documents, latest_query, _DOMAIN_TO_CATEGORY[d]
+            ): d
+            for d in matched_domains
+        }
+        for future in as_completed(future_to_domain):
+            domain = future_to_domain[future]
+            try:
+                results_by_domain[domain] = future.result()
+                print(
+                    f"  ✓ {domain.value}: {len(results_by_domain[domain])} hits"
+                )
+            except Exception as exc:
+                print(f"  ✗ {domain.value} retrieval failed: {exc}")
+                results_by_domain[domain] = []
+
+    aggregated = _aggregate_multi_hop_results(results_by_domain)
+
+    if aggregated:
+        total_hits = sum(len(v) for v in results_by_domain.values())
+        print(
+            f"Multi-hop aggregation complete — {total_hits} total chunks "
+            f"from {len(results_by_domain)} domains"
+        )
+    else:
+        print("No relevant results from parallel retrieval")
+
+    return {"multi_hop_context": aggregated}
 
 
 def agent_node(state: AgentState) -> AgentState:
@@ -73,6 +210,11 @@ def agent_node(state: AgentState) -> AgentState:
     Domain-aware routing classifies the query and dynamically binds
     only the relevant domain tools, improving accuracy and reducing
     unnecessary tool calls.
+
+    If ``multi_hop_context`` is present in the state (set by the
+    multi-hop retrieval node), it is injected into the system prompt
+    so the LLM can synthesize a cross-domain answer without needing
+    to make additional tool calls.
     """
     print("---NODE: AGENT LLM---")
     
@@ -92,6 +234,21 @@ def agent_node(state: AgentState) -> AgentState:
         elif hasattr(last, 'content'):
             latest_query = last.content
     
+    # ── Multi-hop pre-retrieved context ────────────────────────
+    multi_hop_ctx = state.get("multi_hop_context", "") or ""
+    multi_hop_prompt_block = ""
+    if multi_hop_ctx:
+        print("Injecting multi-hop aggregated context into system prompt")
+        multi_hop_prompt_block = (
+            "\n\n--- PRE-RETRIEVED CROSS-DOMAIN CONTEXT (Multi-Hop) ---\n"
+            f"{multi_hop_ctx}\n"
+            "--- END CROSS-DOMAIN CONTEXT ---\n\n"
+            "The above context was retrieved in parallel from multiple knowledge-base "
+            "domains. Use it to compose a comprehensive answer. You may still call "
+            "tools if you need additional details, but prefer the pre-retrieved "
+            "context when it already answers the question.\n"
+        )
+
     # Check if model supports tools
     if llm_provider.supports_tools():
         print("Using LLM with tool support")
@@ -111,12 +268,13 @@ def agent_node(state: AgentState) -> AgentState:
         system_message = SystemMessage(content=f"""You are a helpful university chatbot assistant with access to local university information files.
 
 {routing_context}
-
+{multi_hop_prompt_block}
 HOW TO RESPOND:
 1. For ANY question, ALWAYS use the appropriate tool first to search the university knowledge base
 2. If the tools return relevant information, answer BASED ON that information and cite it as from the university knowledge base
 3. If the tools return "The related data is not present" or no relevant information is found, you MAY still answer the question using your general knowledge, BUT you MUST clearly add a disclaimer like:
    "⚠️ *Note: This answer is based on general knowledge and was not retrieved from the university knowledge base.*"
+4. For multi-domain questions, synthesize information from ALL relevant domains into a single coherent answer
 
 Your knowledge base is organized in categories:
 1. Academic: Calendars, schedules, dates, holidays
@@ -211,11 +369,15 @@ def create_agent_graph():
     workflow = StateGraph(AgentState)
     
     # Add nodes
+    workflow.add_node("multi_hop_retrieval", multi_hop_retrieval_node)
     workflow.add_node("agent", agent_node)
     workflow.add_node("tools", tool_node)
     
-    # Set entry point
-    workflow.set_entry_point("agent")
+    # Entry → multi-hop parallel retrieval (runs once per user turn)
+    workflow.set_entry_point("multi_hop_retrieval")
+    
+    # Multi-hop retrieval always flows into the agent
+    workflow.add_edge("multi_hop_retrieval", "agent")
     
     # Add conditional edges
     workflow.add_conditional_edges(
