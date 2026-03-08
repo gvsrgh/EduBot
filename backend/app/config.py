@@ -18,6 +18,12 @@ if not DATABASE_URL:
 # For sync operations (if needed)
 DATABASE_URL_SYNC = os.getenv("DATABASE_URL_SYNC")
 
+if not DATABASE_URL_SYNC:
+    raise ValueError(
+        "DATABASE_URL_SYNC environment variable is required. "
+        "Please set it in your .env file with your PostgreSQL sync connection string."
+    )
+
 # JWT Configuration
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 

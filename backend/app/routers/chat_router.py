@@ -58,7 +58,7 @@ async def send_message_public(
     
     # Invoke agent graph
     try:
-        result = agent_graph.invoke(
+        result = await agent_graph.ainvoke(
             {"messages": [("user", message_data.message)]},
             config=thread_config
         )
@@ -144,8 +144,11 @@ async def send_message(
         if not chat:
             raise HTTPException(status_code=404, detail="Chat not found")
     else:
-        # Create new chat
-        chat = Chat(user_id=uuid.UUID(current_user["user_id"]), title="New Chat")
+        # Create new chat with auto-generated title from first message
+        title = message_data.message.strip()[:50]
+        if len(message_data.message.strip()) > 50:
+            title += "..."
+        chat = Chat(user_id=uuid.UUID(current_user["user_id"]), title=title)
         session.add(chat)
         await session.commit()
         await session.refresh(chat)
@@ -155,7 +158,7 @@ async def send_message(
     
     # Invoke agent graph
     try:
-        result = agent_graph.invoke(
+        result = await agent_graph.ainvoke(
             {"messages": [("user", message_data.message)]},
             config=thread_config
         )
@@ -222,8 +225,11 @@ async def send_message_stream(
         if not chat:
             raise HTTPException(status_code=404, detail="Chat not found")
     else:
-        # Create new chat
-        chat = Chat(user_id=uuid.UUID(current_user["user_id"]), title="New Chat")
+        # Create new chat with auto-generated title from first message
+        title = message_data.message.strip()[:50]
+        if len(message_data.message.strip()) > 50:
+            title += "..."
+        chat = Chat(user_id=uuid.UUID(current_user["user_id"]), title=title)
         session.add(chat)
         await session.commit()
         await session.refresh(chat)

@@ -55,40 +55,6 @@ def sanitize_messages(messages: list[BaseMessage]) -> list[BaseMessage]:
     return cleaned
 
 
-def sanitize_messages(messages: list[BaseMessage]) -> list[BaseMessage]:
-    """
-    Remove orphaned tool_calls that have no matching ToolMessage response.
-    
-    LLMs sometimes emit tool_calls in an AIMessage, but if the tool
-    execution fails or is skipped the follow-up ToolMessage is missing.
-    Passing such orphaned calls back into the model causes errors with
-    most providers.  This helper strips those dangling calls.
-    """
-    # Collect IDs of all ToolMessages in the conversation
-    tool_msg_ids: set[str] = set()
-    for m in messages:
-        if isinstance(m, ToolMessage) and hasattr(m, "tool_call_id"):
-            tool_msg_ids.add(m.tool_call_id)
-
-    cleaned: list[BaseMessage] = []
-    for m in messages:
-        if isinstance(m, AIMessage) and getattr(m, "tool_calls", None):
-            # Keep only tool_calls that have a corresponding ToolMessage
-            valid_calls = [tc for tc in m.tool_calls if tc["id"] in tool_msg_ids]
-            if valid_calls:
-                m = m.copy()
-                m.tool_calls = valid_calls
-                cleaned.append(m)
-            else:
-                # Drop tool_calls entirely but keep text content if any
-                if m.content:
-                    cleaned.append(AIMessage(content=m.content))
-                # else skip the message entirely
-        else:
-            cleaned.append(m)
-    return cleaned
-
-
 # Define the Agent's State
 class AgentState(TypedDict):
     """State maintained throughout the conversation."""
