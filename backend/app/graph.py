@@ -99,7 +99,7 @@ def _aggregate_multi_hop_results(
                 continue
             seen.add(key)
             source = (
-                f"[{h['filename']} | {h['category']} | score: {h['score']}]"
+                f"[SOURCE: {h['filename']} | {h['category']} | relevance: {h['score']}]"
             )
             domain_lines.append(f"{source}\n{h['text']}")
         if domain_lines:
@@ -271,10 +271,29 @@ def agent_node(state: AgentState) -> AgentState:
 {multi_hop_prompt_block}
 HOW TO RESPOND:
 1. For ANY question, ALWAYS use the appropriate tool first to search the university knowledge base
-2. If the tools return relevant information, answer BASED ON that information and cite it as from the university knowledge base
+2. If the tools return relevant information, answer BASED ON that information and CITE THE SOURCE (see citation rules below)
 3. If the tools return "The related data is not present" or no relevant information is found, you MAY still answer the question using your general knowledge, BUT you MUST clearly add a disclaimer like:
    "⚠️ *Note: This answer is based on general knowledge and was not retrieved from the university knowledge base.*"
 4. For multi-domain questions, synthesize information from ALL relevant domains into a single coherent answer
+
+--- CITATION RULES (MANDATORY) ---
+Tool results contain lines like `[SOURCE: filename | category | relevance: score]`.
+You MUST follow these citation rules when knowledge-base results are used:
+
+1. **Inline citations**: When using information from a source, cite it naturally in your answer.
+   Example: "According to *university_info.txt*, the tuition fee for B.Tech is ₹1,20,000 per year."
+2. **Sources section**: At the END of your response, add a horizontal rule followed by a markdown
+   sources list using this EXACT format:
+
+   ---
+   **Sources:**
+   - 📄 `filename.txt` (Category)
+   - 📄 `another_file.txt` (Category)
+
+   List ONLY the files you actually referenced. Do NOT list files that were returned but not used.
+3. If the answer is based entirely on general knowledge (no tool results used), do NOT add a Sources section.
+4. Never expose raw relevance scores to the user.
+--- END CITATION RULES ---
 
 Your knowledge base is organized in categories:
 1. Academic: Calendars, schedules, dates, holidays
