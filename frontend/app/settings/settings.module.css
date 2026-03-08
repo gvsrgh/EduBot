@@ -1122,6 +1122,144 @@
   text-align: center;
 }
 
+/* ---- Document Expiry Management ---- */
+
+/* Expired file row highlight */
+.kbFileExpired {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+}
+
+/* Expired badge in header */
+.kbExpiredBadge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.15);
+  color: rgb(248, 113, 113);
+  font-weight: 600;
+}
+
+/* Expiry tag next to metadata */
+.kbExpiryTag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+.kbExpiry_expired {
+  background: rgba(239, 68, 68, 0.15);
+  color: rgb(248, 113, 113);
+}
+
+.kbExpiry_expiring-soon {
+  background: rgba(245, 158, 11, 0.15);
+  color: rgb(251, 191, 36);
+}
+
+.kbExpiry_expiring {
+  background: rgba(234, 179, 8, 0.12);
+  color: rgb(250, 204, 21);
+}
+
+.kbExpiry_active {
+  background: rgba(34, 197, 94, 0.12);
+  color: rgb(74, 222, 128);
+}
+
+/* Expiry button on each file row */
+.kbExpiryBtn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: all var(--transition-fast);
+}
+
+.kbFileItem:hover .kbExpiryBtn {
+  opacity: 0.7;
+}
+
+.kbExpiryBtn:hover {
+  opacity: 1 !important;
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.kbExpiryBtnActive {
+  opacity: 1 !important;
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Inline expiry editor row */
+.kbExpiryEditor {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.kbExpiryInput {
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.kbExpiryInput:focus {
+  border-color: var(--primary-color);
+}
+
+.kbExpirySave {
+  padding: 0.2rem 0.5rem;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-sm);
+  color: rgb(74, 222, 128);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.kbExpirySave:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+.kbExpirySave:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kbExpiryRemove {
+  padding: 0.2rem 0.5rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-sm);
+  color: rgb(248, 113, 113);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.kbExpiryRemove:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+}
+
+.kbExpiryRemove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .navbar {

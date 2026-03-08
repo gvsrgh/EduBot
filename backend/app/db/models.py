@@ -97,6 +97,10 @@ class Document(Base):
     upload_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
+    # Document expiry management
+    expiry_date = Column(DateTime(timezone=True), nullable=True)   # NULL = never expires
+    is_expired = Column(Boolean, default=False, nullable=False)    # Cached expiry flag
+
     # Relationships
     uploader = relationship("User", foreign_keys=[uploaded_by])
 

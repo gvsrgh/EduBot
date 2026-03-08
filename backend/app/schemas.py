@@ -178,6 +178,8 @@ class DocumentResponse(BaseModel):
     uploaded_by: Optional[str] = None
     upload_date: datetime
     updated_at: datetime
+    expiry_date: Optional[datetime] = None
+    is_expired: bool = False
 
     @field_validator('id', 'uploaded_by', mode='before')
     @classmethod
@@ -220,3 +222,8 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     otp: str = Field(..., min_length=6, max_length=6)
     new_password: str = Field(..., min_length=6)
+
+
+class DocumentExpiryUpdate(BaseModel):
+    """Request schema for updating document expiry date."""
+    expiry_date: Optional[datetime] = None  # None = remove expiry (never expires)

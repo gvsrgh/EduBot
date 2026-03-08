@@ -4,12 +4,14 @@ from sqlalchemy import select, and_
 import httpx
 from typing import Optional
 from pathlib import Path
+from datetime import datetime, timezone
 
 from app.db.database import get_session
 from app.db.models import Setting, Document
 from app.schemas import (
     ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate,
     TestConnectionRequest, DocumentResponse, DocumentListResponse,
+    DocumentExpiryUpdate,
 )
 from app.auth import get_current_user, get_current_admin_user
 from app.llm_provider import llm_provider
@@ -291,6 +293,7 @@ async def update_settings(
 async def upload_file(
     file: UploadFile = File(...),
     category: str = Form(...),
+    expiry_date: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
@@ -402,6 +405,18 @@ async def upload_file(
         
         # Create Document record in PostgreSQL
         user_id = current_user.get("user_id")
+
+        # Parse optional expiry_date
+        parsed_expiry = None
+        if expiry_date:
+            try:
+                parsed_expiry = datetime.fromisoformat(expiry_date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid expiry_date format. Use ISO 8601 (e.g. 2026-06-15T00:00:00Z)"
+                )
+
         doc_record = Document(
             filename=output_filename,
             original_filename=safe_filename,
@@ -412,6 +427,7 @@ async def upload_file(
             chunk_count=chunk_count,
             vector_ids=vector_ids,
             uploaded_by=user_id,
+            expiry_date=parsed_expiry,
         )
         session.add(doc_record)
         await session.commit()
@@ -583,3 +599,83 @@ async def delete_uploaded_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting file: {str(e)}"
         )
+
+
+# -----------------------------------------------------------------------
+# Document Expiry Management
+# -----------------------------------------------------------------------
+
+@router.patch("/files/{document_id}/expiry", response_model=DocumentResponse)
+async def update_document_expiry(
+    document_id: str,
+    body: DocumentExpiryUpdate,
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Set or remove expiry date on a document.
+
+    - Send `{ "expiry_date": "2026-06-15T00:00:00Z" }` to set expiry.
+    - Send `{ "expiry_date": null }` to remove expiry (never expires).
+    """
+    user_email = current_user.get("email", "")
+    if user_email.endswith("@pvpsit.ac.in"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Expiry management is not allowed for @pvpsit.ac.in users",
+        )
+
+    result = await session.execute(
+        select(Document).where(Document.id == document_id)
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    doc.expiry_date = body.expiry_date
+    # Refresh cached `is_expired` flag
+    if body.expiry_date is None:
+        doc.is_expired = False
+    else:
+        doc.is_expired = body.expiry_date <= datetime.now(timezone.utc)
+
+    await session.commit()
+    await session.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.get("/files/expired", response_model=DocumentListResponse)
+async def list_expired_documents(
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """List all documents whose expiry_date has passed."""
+    now = datetime.now(timezone.utc)
+    result = await session.execute(
+        select(Document).where(Document.expiry_date <= now).order_by(Document.expiry_date)
+    )
+    docs = result.scalars().all()
+    return {"files": [DocumentResponse.model_validate(d) for d in docs]}
+
+
+@router.post("/files/refresh-expiry")
+async def refresh_expiry_flags(
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Bulk-refresh the `is_expired` flag on every document.
+    Called on app startup or manually from the Settings UI.
+    """
+    now = datetime.now(timezone.utc)
+    result = await session.execute(select(Document))
+    docs = result.scalars().all()
+    updated = 0
+    for doc in docs:
+        should_be_expired = doc.expiry_date is not None and doc.expiry_date <= now
+        if doc.is_expired != should_be_expired:
+            doc.is_expired = should_be_expired
+            updated += 1
+    if updated:
+        await session.commit()
+    return {"success": True, "updated": updated, "total": len(docs)}

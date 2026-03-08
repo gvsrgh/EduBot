@@ -82,6 +82,30 @@ async def lifespan(app: FastAPI):
     
     print("🤖 LangGraph Agent ready")
     print("💬 Multi-model chatbot system active")
+
+    # Refresh document expiry flags on startup
+    print("⏰ Refreshing document expiry flags...")
+    try:
+        from app.db.database import AsyncSessionLocal as _ExpirySession
+        from app.db.models import Document as _Doc
+        from datetime import datetime as _dt, timezone as _tz
+        from sqlalchemy import select as _sel
+
+        async with _ExpirySession() as _sess:
+            _now = _dt.now(_tz.utc)
+            _res = await _sess.execute(_sel(_Doc))
+            _docs = _res.scalars().all()
+            _upd = 0
+            for _d in _docs:
+                _should = _d.expiry_date is not None and _d.expiry_date <= _now
+                if _d.is_expired != _should:
+                    _d.is_expired = _should
+                    _upd += 1
+            if _upd:
+                await _sess.commit()
+            print(f"✅ Expiry flags refreshed ({_upd} updated out of {len(_docs)})")
+    except Exception as e:
+        print(f"⚠️ Expiry flag refresh failed (non-fatal): {e}")
     
     yield
     

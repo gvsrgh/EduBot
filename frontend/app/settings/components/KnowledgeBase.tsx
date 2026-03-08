@@ -6,10 +6,14 @@ import styles from '../settings.module.css';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
 interface UploadedFile {
+  id?: string;
   filename: string;
   category: string;
   size: number;
-  modified: number;
+  modified?: number;
+  upload_date?: string;
+  expiry_date?: string | null;
+  is_expired?: boolean;
 }
 
 export default function KnowledgeBase() {
@@ -17,6 +21,9 @@ export default function KnowledgeBase() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
+  const [editingExpiry, setEditingExpiry] = useState<string | null>(null);
+  const [expiryInput, setExpiryInput] = useState('');
+  const [savingExpiry, setSavingExpiry] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{
     show: boolean;
     success: boolean;
@@ -34,9 +41,15 @@ export default function KnowledgeBase() {
 
       if (response.ok) {
         const data = await response.json();
-        // Sort by modified time descending (latest first)
         const sorted = (data.files || []).sort(
-          (a: UploadedFile, b: UploadedFile) => b.modified - a.modified
+          (a: UploadedFile, b: UploadedFile) => {
+            // Sort expired first, then by upload_date descending
+            if (a.is_expired && !b.is_expired) return -1;
+            if (!a.is_expired && b.is_expired) return 1;
+            const aTime = a.upload_date ? new Date(a.upload_date).getTime() : (a.modified || 0) * 1000;
+            const bTime = b.upload_date ? new Date(b.upload_date).getTime() : (b.modified || 0) * 1000;
+            return bTime - aTime;
+          }
         );
         setFiles(sorted);
       }
@@ -51,7 +64,6 @@ export default function KnowledgeBase() {
     fetchFiles();
   }, [fetchFiles]);
 
-  // Listen for custom event from UploadSection to refresh file list
   useEffect(() => {
     const handler = () => fetchFiles();
     window.addEventListener('kb-files-updated', handler);
@@ -76,30 +88,110 @@ export default function KnowledgeBase() {
       );
 
       if (response.ok) {
-        setStatusMessage({
-          show: true,
-          success: true,
-          message: `Deleted "${filename}"`,
-        });
+        showStatus(true, `Deleted "${filename}"`);
         fetchFiles();
-        setTimeout(() => setStatusMessage({ show: false, success: false, message: '' }), 3000);
       } else {
         const error = await response.json();
-        setStatusMessage({
-          show: true,
-          success: false,
-          message: error.detail || 'Delete failed',
-        });
+        showStatus(false, error.detail || 'Delete failed');
       }
     } catch (error) {
-      setStatusMessage({
-        show: true,
-        success: false,
-        message: error instanceof Error ? error.message : 'Delete failed',
-      });
+      showStatus(false, error instanceof Error ? error.message : 'Delete failed');
     } finally {
       setDeletingFile(null);
     }
+  };
+
+  const handleSetExpiry = (file: UploadedFile) => {
+    const fileKey = file.id || `${file.category}/${file.filename}`;
+    if (editingExpiry === fileKey) {
+      setEditingExpiry(null);
+      return;
+    }
+    setEditingExpiry(fileKey);
+    if (file.expiry_date) {
+      setExpiryInput(file.expiry_date.split('T')[0]);
+    } else {
+      setExpiryInput('');
+    }
+  };
+
+  const saveExpiry = async (file: UploadedFile) => {
+    if (!file.id) {
+      showStatus(false, 'Cannot set expiry on legacy files without DB record');
+      return;
+    }
+    const fileKey = file.id;
+    setSavingExpiry(fileKey);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const payload = expiryInput
+        ? { expiry_date: new Date(expiryInput + 'T23:59:59Z').toISOString() }
+        : { expiry_date: null };
+
+      const response = await fetch(`${API_BASE}/settings/files/${file.id}/expiry`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        showStatus(true, expiryInput
+          ? `Expiry set to ${expiryInput} for "${file.filename}"`
+          : `Expiry removed for "${file.filename}"`
+        );
+        setEditingExpiry(null);
+        fetchFiles();
+      } else {
+        const error = await response.json();
+        showStatus(false, error.detail || 'Failed to update expiry');
+      }
+    } catch (error) {
+      showStatus(false, error instanceof Error ? error.message : 'Failed to update expiry');
+    } finally {
+      setSavingExpiry(null);
+    }
+  };
+
+  const removeExpiry = async (file: UploadedFile) => {
+    if (!file.id) return;
+    setSavingExpiry(file.id);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(`${API_BASE}/settings/files/${file.id}/expiry`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ expiry_date: null }),
+      });
+
+      if (response.ok) {
+        showStatus(true, `Expiry removed for "${file.filename}"`);
+        setEditingExpiry(null);
+        fetchFiles();
+      } else {
+        const error = await response.json();
+        showStatus(false, error.detail || 'Failed to remove expiry');
+      }
+    } catch (error) {
+      showStatus(false, error instanceof Error ? error.message : 'Failed');
+    } finally {
+      setSavingExpiry(null);
+    }
+  };
+
+  const showStatus = (success: boolean, message: string) => {
+    setStatusMessage({ show: true, success, message });
+    setTimeout(() => setStatusMessage({ show: false, success: false, message: '' }), 3000);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -110,12 +202,31 @@ export default function KnowledgeBase() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const formatDate = (timestamp: number | undefined, isoDate?: string) => {
+    if (isoDate) {
+      return new Date(isoDate).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      });
+    }
+    if (timestamp) {
+      return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      });
+    }
+    return '—';
+  };
+
+  const getExpiryLabel = (file: UploadedFile) => {
+    if (!file.expiry_date) return null;
+    const exp = new Date(file.expiry_date);
+    const now = new Date();
+    const diff = exp.getTime() - now.getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+    if (days < 0) return { text: `Expired ${Math.abs(days)}d ago`, status: 'expired' as const };
+    if (days <= 7) return { text: `Expires in ${days}d`, status: 'expiring-soon' as const };
+    if (days <= 30) return { text: `Expires in ${days}d`, status: 'expiring' as const };
+    return { text: `Expires ${exp.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, status: 'active' as const };
   };
 
   const getCategoryIcon = (category: string) => {
@@ -136,17 +247,25 @@ export default function KnowledgeBase() {
     }
   };
 
-  // Filter files by search query
   const filteredFiles = files.filter(f =>
     f.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
     f.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const expiredCount = files.filter(f => f.is_expired).length;
+
   return (
     <div className={styles.kbContainer}>
       <div className={styles.kbHeader}>
         <h3>📂 Knowledge Base</h3>
-        <span className={styles.kbCount}>{files.length} file{files.length !== 1 ? 's' : ''}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span className={styles.kbCount}>{files.length} file{files.length !== 1 ? 's' : ''}</span>
+          {expiredCount > 0 && (
+            <span className={styles.kbExpiredBadge}>
+              ⚠️ {expiredCount} expired
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -188,8 +307,15 @@ export default function KnowledgeBase() {
         ) : (
           filteredFiles.map((file, index) => {
             const key = `${file.category}/${file.filename}`;
+            const fileKey = file.id || key;
+            const expiryLabel = getExpiryLabel(file);
+            const isEditing = editingExpiry === fileKey;
+
             return (
-              <div key={index} className={styles.kbFileItem}>
+              <div
+                key={file.id || index}
+                className={`${styles.kbFileItem} ${file.is_expired ? styles.kbFileExpired : ''}`}
+              >
                 <div className={styles.kbFileIcon}>
                   {getCategoryIcon(file.category)}
                 </div>
@@ -204,9 +330,61 @@ export default function KnowledgeBase() {
                     <span className={styles.kbFileSizeDot}>·</span>
                     <span>{formatFileSize(file.size)}</span>
                     <span className={styles.kbFileSizeDot}>·</span>
-                    <span>{formatDate(file.modified)}</span>
+                    <span>{formatDate(file.modified, file.upload_date)}</span>
+                    {expiryLabel && (
+                      <>
+                        <span className={styles.kbFileSizeDot}>·</span>
+                        <span className={`${styles.kbExpiryTag} ${styles[`kbExpiry_${expiryLabel.status}`]}`}>
+                          ⏰ {expiryLabel.text}
+                        </span>
+                      </>
+                    )}
                   </div>
+
+                  {/* Inline Expiry Editor */}
+                  {isEditing && (
+                    <div className={styles.kbExpiryEditor}>
+                      <input
+                        type="date"
+                        value={expiryInput}
+                        onChange={(e) => setExpiryInput(e.target.value)}
+                        className={styles.kbExpiryInput}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      <button
+                        onClick={() => saveExpiry(file)}
+                        disabled={savingExpiry === fileKey}
+                        className={styles.kbExpirySave}
+                        title="Save expiry"
+                      >
+                        {savingExpiry === fileKey ? '⏳' : '✓'}
+                      </button>
+                      {file.expiry_date && (
+                        <button
+                          onClick={() => removeExpiry(file)}
+                          disabled={savingExpiry === fileKey}
+                          className={styles.kbExpiryRemove}
+                          title="Remove expiry"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Expiry toggle button */}
+                {file.id && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetExpiry(file)}
+                    className={`${styles.kbExpiryBtn} ${isEditing ? styles.kbExpiryBtnActive : ''}`}
+                    title={isEditing ? 'Close expiry editor' : 'Set expiry date'}
+                  >
+                    ⏰
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => deleteFile(file.category, file.filename)}
