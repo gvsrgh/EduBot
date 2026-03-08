@@ -149,11 +149,11 @@ def index_document(
     text: str,
     filename: str,
     category: str,
-) -> int:
+) -> tuple[int, List[str]]:
     """
     Process a document: chunk → embed → store in Qdrant.
 
-    Returns the number of chunks indexed.
+    Returns a tuple of (chunk_count, list_of_vector_point_ids).
     """
     ensure_collection()
     client = get_qdrant_client()
@@ -167,15 +167,17 @@ def index_document(
     # Chunk the text
     chunks = chunk_text(text)
     if not chunks:
-        return 0
+        return 0, []
 
     # Generate embeddings
     embeddings = embed_texts(chunks)
 
     # Build Qdrant points
     points = []
+    point_ids: List[str] = []
     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
         point_id = str(uuid.uuid4())
+        point_ids.append(point_id)
         points.append(
             PointStruct(
                 id=point_id,
@@ -197,7 +199,7 @@ def index_document(
         client.upsert(collection_name=COLLECTION_NAME, points=batch)
 
     print(f"Indexed {len(chunks)} chunks from '{filename}' [{category}]")
-    return len(chunks)
+    return len(chunks), point_ids
 
 
 # ── Search ────────────────────────────────────────────────────
@@ -322,7 +324,7 @@ def seed_existing_documents():
                 continue
             text = txt_file.read_text(encoding="utf-8")
             if text.strip():
-                count = index_document(text, txt_file.name, category)
+                count, _ids = index_document(text, txt_file.name, category)
                 total += count
 
     print(f"Seeded {total} total chunks from existing data files")
