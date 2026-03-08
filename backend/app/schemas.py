@@ -195,3 +195,28 @@ class DocumentResponse(BaseModel):
 class DocumentListResponse(BaseModel):
     """Response schema for list of documents."""
     files: List[DocumentResponse]
+
+
+# Forgot Password Schemas
+class ForgotPasswordRequest(BaseModel):
+    """Request to send password reset OTP."""
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Response after sending password reset OTP."""
+    success: bool
+    message: str
+
+
+class VerifyResetOTPRequest(BaseModel):
+    """Request to verify password reset OTP."""
+    email: EmailStr
+    otp: str = Field(..., min_length=6, max_length=6)
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request to reset password after OTP verification."""
+    email: EmailStr
+    otp: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=6)
