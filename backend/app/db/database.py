@@ -51,3 +51,31 @@ async def init_db():
     """Initialize database tables."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Run lightweight column migrations for existing tables
+    async with engine.begin() as conn:
+        await _migrate_columns(conn)
+
+
+async def _migrate_columns(conn):
+    """Add missing columns to existing tables (idempotent)."""
+    migrations = [
+        # Document expiry management columns
+        (
+            "documents", "expiry_date",
+            "ALTER TABLE documents ADD COLUMN expiry_date TIMESTAMPTZ"
+        ),
+        (
+            "documents", "is_expired",
+            "ALTER TABLE documents ADD COLUMN is_expired BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
+    ]
+    from sqlalchemy import text
+    for table, column, ddl in migrations:
+        result = await conn.execute(text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = :table AND column_name = :column"
+        ), {"table": table, "column": column})
+        if result.fetchone() is None:
+            await conn.execute(text(ddl))
+            print(f"  ✅ Added column {table}.{column}")
