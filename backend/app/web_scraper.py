@@ -188,7 +188,6 @@ async def run_scrape(
         headers={
             "User-Agent": "EduBot+ Web Scraper/1.0 (educational; pvpsiddhartha.ac.in)"
         },
-        verify=False,  # some college sites have cert issues
     ) as client:
         for url in urls:
             pr = PageResult(url=url, success=False)
@@ -198,12 +197,14 @@ async def run_scrape(
 
                 # Ensure target directory exists
                 target_dir = CATEGORY_DIRS[category]
-                target_dir.mkdir(parents=True, exist_ok=True)
-
-                file_path = target_dir / filename
-
-                # Save .txt (overwrite on re-scrape)
-                file_path.write_text(text, encoding="utf-8")
+                try:
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    file_path = target_dir / filename
+                    # Save .txt (overwrite on re-scrape)
+                    file_path.write_text(text, encoding="utf-8")
+                except OSError:
+                    # Read-only filesystem (e.g. Vercel) – skip local save
+                    pass
 
                 # Index in Qdrant
                 chunk_count = 0

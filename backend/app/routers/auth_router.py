@@ -12,11 +12,15 @@ from app.schemas import (
 )
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
 from app.email_service import send_otp_email, verify_otp, send_welcome_email, send_password_reset_otp_email, verify_password_reset_otp
+from app.config import RESTRICTED_EMAIL_DOMAIN, ADMIN_EMAIL_DOMAIN
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Shared domain validation
-ALLOWED_DOMAINS = ['pvpsit.ac.in', 'pvpsiddhartha.ac.in']
+# Allowed email domains derived from config
+ALLOWED_DOMAINS = [
+    RESTRICTED_EMAIL_DOMAIN.lstrip('@'),
+    ADMIN_EMAIL_DOMAIN.lstrip('@'),
+]
 
 def validate_email_domain(email: str) -> None:
     """Validate that the email belongs to an allowed domain."""
@@ -24,7 +28,7 @@ def validate_email_domain(email: str) -> None:
     if email_domain not in ALLOWED_DOMAINS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only @pvpsit.ac.in and @pvpsiddhartha.ac.in email addresses are allowed",
+            detail=f"Only @{' and @'.join(ALLOWED_DOMAINS)} email addresses are allowed",
         )
 
 
@@ -59,8 +63,8 @@ async def register(
             )
     
     # Create new user
-    # Auto-grant admin privileges to @pvpsiddhartha.ac.in domain users
-    is_admin = user_data.email.endswith('@pvpsiddhartha.ac.in')
+    # Auto-grant admin privileges to admin-domain users
+    is_admin = user_data.email.endswith(ADMIN_EMAIL_DOMAIN)
     hashed_pw = hash_password(user_data.password)
     new_user = User(
         email=user_data.email,
@@ -185,7 +189,7 @@ async def verify_otp_and_register(
     hashed_pw = stored_data['hashed_password']
     
     # Create new user with pre-hashed password
-    is_admin = data.email.endswith('@pvpsiddhartha.ac.in')
+    is_admin = data.email.endswith(ADMIN_EMAIL_DOMAIN)
     new_user = User(
         email=data.email,
         username=username,

@@ -1,13 +1,12 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { apiClient } from './api';
 
 interface AuthContextType {
   user: { email: string; username: string; is_admin: boolean } | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
   loginWithToken: (token: string, user: { email: string; username: string; is_admin: boolean }) => void;
   logout: () => void;
   loading: boolean;
@@ -19,7 +18,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<{ email: string; username: string; is_admin: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     const token = apiClient.getToken();
@@ -51,19 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/chat');
   };
 
-  const register = async (username: string, email: string, password: string) => {
-    const response = await apiClient.register({ username, email, password });
-    apiClient.setToken(response.access_token);
-    const userData = { 
-      email: response.user.email, 
-      username: response.user.username,
-      is_admin: response.user.is_admin 
-    };
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-    router.push('/chat');
-  };
-
   const logout = () => {
     apiClient.setToken(null);
     localStorage.removeItem('user');
@@ -79,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, loginWithToken, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, loginWithToken, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

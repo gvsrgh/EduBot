@@ -17,7 +17,10 @@ from app.schemas import (
 )
 from app.auth import get_current_user, get_current_admin_user
 from app.llm_provider import llm_provider
-from app.config import ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR, ALLOWED_EXTENSIONS, MAX_FILE_SIZE
+from app.config import (
+    ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR,
+    ALLOWED_EXTENSIONS, MAX_FILE_SIZE, RESTRICTED_EMAIL_DOMAIN,
+)
 from app.document_parser import extract_text
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
@@ -310,12 +313,12 @@ async def upload_file(
     Qdrant vector index (Paper §3.4 — Automatic Document Indexing).
     """
     
-    # Restrict file upload access for @pvpsit.ac.in users
+    # Restrict file upload access for restricted-domain users
     user_email = current_user.get("email", "")
-    if user_email.endswith("@pvpsit.ac.in"):
+    if user_email.endswith(RESTRICTED_EMAIL_DOMAIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="File upload is not allowed for @pvpsit.ac.in users"
+            detail="File upload is not allowed for restricted-domain users"
         )
     
     # Validate category
@@ -376,15 +379,25 @@ async def upload_file(
             detail=str(e)
         )
     
-    # Save extracted text as .txt file
+    # Save extracted text as .txt file (best-effort; Vercel has read-only FS)
     file_path = target_dir / output_filename
+    file_saved = False
     
-    # Check if file already exists
-    if file_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"File '{output_filename}' already exists in {category} category"
-        )
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        if file_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"File '{output_filename}' already exists in {category} category"
+            )
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(extracted_text)
+        file_saved = True
+    except HTTPException:
+        raise
+    except OSError:
+        # Read-only filesystem (e.g. Vercel) – skip local save
+        print(f"Warning: Could not write '{output_filename}' to disk (read-only FS)")
     
     try:
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -453,7 +466,7 @@ async def upload_file(
     except Exception as e:
         await session.rollback()
         # Clean up if file was partially written
-        if file_path.exists():
+        if file_saved and file_path.exists():
             file_path.unlink()
         
         raise HTTPException(
@@ -522,12 +535,12 @@ async def delete_uploaded_file(
     Removes the file from disk, its vectors from Qdrant, and its
     Document record from PostgreSQL.
     """
-    # Restrict delete access for @pvpsit.ac.in users
+    # Restrict delete access for restricted-domain users
     user_email = current_user.get("email", "")
-    if user_email.endswith("@pvpsit.ac.in"):
+    if user_email.endswith(RESTRICTED_EMAIL_DOMAIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="File deletion is not allowed for @pvpsit.ac.in users"
+            detail="File deletion is not allowed for restricted-domain users"
         )
     
     # Validate category
@@ -555,14 +568,27 @@ async def delete_uploaded_file(
     
     file_path = target_dir / safe_filename
     
-    if not file_path.exists():
+    # Check DB record exists (primary source of truth)
+    result = await session.execute(
+        select(Document).where(
+            and_(
+                Document.filename == safe_filename,
+                Document.category == category,
+            )
+        )
+    )
+    doc_record = result.scalar_one_or_none()
+    
+    if not doc_record and not file_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"File '{safe_filename}' not found in {category} category"
         )
     
     try:
-        file_path.unlink()
+        # Remove from disk if present (may not exist on Vercel)
+        if file_path.exists():
+            file_path.unlink()
         
         # Remove document vectors from Qdrant
         try:
@@ -573,15 +599,6 @@ async def delete_uploaded_file(
             print(f"Warning: Vector deletion failed for '{safe_filename}': {vec_err}")
         
         # Remove Document record from PostgreSQL
-        result = await session.execute(
-            select(Document).where(
-                and_(
-                    Document.filename == safe_filename,
-                    Document.category == category,
-                )
-            )
-        )
-        doc_record = result.scalar_one_or_none()
         if doc_record:
             await session.delete(doc_record)
             await session.commit()
@@ -621,10 +638,10 @@ async def update_document_expiry(
     - Send `{ "expiry_date": null }` to remove expiry (never expires).
     """
     user_email = current_user.get("email", "")
-    if user_email.endswith("@pvpsit.ac.in"):
+    if user_email.endswith(RESTRICTED_EMAIL_DOMAIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Expiry management is not allowed for @pvpsit.ac.in users",
+            detail="Expiry management is not allowed for restricted-domain users",
         )
 
     result = await session.execute(
@@ -692,7 +709,13 @@ async def get_scraper_config(
     current_user: dict = Depends(get_current_user),
 ):
     """Return the current list of target URLs for the web scraper."""
-    from app.web_scraper import scraper_config
+    try:
+        from app.web_scraper import scraper_config
+    except ImportError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Web scraper module unavailable: {e}",
+        )
     return ScraperConfigResponse(urls=scraper_config.get_urls())
 
 
@@ -714,10 +737,10 @@ async def add_scraper_url(
 ):
     """Add a single URL to the scraper target list."""
     user_email = current_user.get("email", "")
-    if user_email.endswith("@pvpsit.ac.in"):
+    if user_email.endswith(RESTRICTED_EMAIL_DOMAIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Scraper management is not allowed for @pvpsit.ac.in users",
+            detail="Scraper management is not allowed for restricted-domain users",
         )
     from app.web_scraper import scraper_config
     added = scraper_config.add_url(body.url)
@@ -736,10 +759,10 @@ async def remove_scraper_url(
 ):
     """Remove a single URL from the scraper target list."""
     user_email = current_user.get("email", "")
-    if user_email.endswith("@pvpsit.ac.in"):
+    if user_email.endswith(RESTRICTED_EMAIL_DOMAIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Scraper management is not allowed for @pvpsit.ac.in users",
+            detail="Scraper management is not allowed for restricted-domain users",
         )
     from app.web_scraper import scraper_config
     removed = scraper_config.remove_url(body.url)
@@ -764,10 +787,10 @@ async def trigger_scrape(
     Returns a ScraperRun summary.
     """
     user_email = current_user.get("email", "")
-    if user_email.endswith("@pvpsit.ac.in"):
+    if user_email.endswith(RESTRICTED_EMAIL_DOMAIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Scraper is not allowed for @pvpsit.ac.in users",
+            detail="Scraper is not allowed for restricted-domain users",
         )
 
     from app.web_scraper import scraper_config, run_scrape

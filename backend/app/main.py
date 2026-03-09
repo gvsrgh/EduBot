@@ -7,22 +7,19 @@ Main FastAPI application with LangGraph agent workflow.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from app.config import CORS_ORIGINS, DEBUG
-from app.db.database import init_db
+from app.db.database import init_db, AsyncSessionLocal, engine
+from app.db.models import Document
 from app.routers import auth_router, chat_router, settings_router
 
+from sqlalchemy import select, text
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan handler."""
-    # Startup
-    print("🚀 Starting EduBot+ Backend...")
-    print("📦 Initializing database...")
-    await init_db()
-    print("✅ Database initialized")
 
-    # Initialize Qdrant vector store
+async def _startup_seed_and_sync():
+    """Seed Qdrant, sync document metadata to PostgreSQL, and refresh expiry flags."""
+    # 1. Initialize Qdrant vector store
     print("📐 Initializing Qdrant vector store...")
     try:
         from app.vector_store import ensure_collection, seed_existing_documents
@@ -31,14 +28,12 @@ async def lifespan(app: FastAPI):
         print("✅ Qdrant vector store ready")
     except Exception as e:
         print(f"⚠️ Qdrant initialization failed (non-fatal): {e}")
-    
-    # Seed existing data/ files into PostgreSQL Document table
+
+    # 2. Sync data/ files into PostgreSQL Document table
     print("📄 Syncing document metadata to PostgreSQL...")
     try:
-        from app.db.database import AsyncSessionLocal
-        from app.db.models import Document
         from app.config import ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR
-        from sqlalchemy import select, and_
+        from sqlalchemy import and_
 
         async with AsyncSessionLocal() as session:
             dirs = {
@@ -51,7 +46,6 @@ async def lifespan(app: FastAPI):
                 if not dir_path.exists():
                     continue
                 for txt_file in sorted(dir_path.glob("*.txt")):
-                    # Check if already tracked in DB
                     result = await session.execute(
                         select(Document).where(
                             and_(
@@ -69,7 +63,7 @@ async def lifespan(app: FastAPI):
                         category=category,
                         file_type=".txt",
                         file_size=stat.st_size,
-                        chunk_count=0,  # already indexed in Qdrant above
+                        chunk_count=0,
                         vector_ids=[],
                     )
                     session.add(doc)
@@ -79,37 +73,42 @@ async def lifespan(app: FastAPI):
             print(f"✅ Document metadata synced ({created} new records)")
     except Exception as e:
         print(f"⚠️ Document metadata sync failed (non-fatal): {e}")
-    
+
+    # 3. Refresh document expiry flags
+    print("⏰ Refreshing document expiry flags...")
+    try:
+        async with AsyncSessionLocal() as session:
+            now = datetime.now(timezone.utc)
+            result = await session.execute(select(Document))
+            docs = result.scalars().all()
+            updated = 0
+            for doc in docs:
+                should_be_expired = doc.expiry_date is not None and doc.expiry_date <= now
+                if doc.is_expired != should_be_expired:
+                    doc.is_expired = should_be_expired
+                    updated += 1
+            if updated:
+                await session.commit()
+            print(f"✅ Expiry flags refreshed ({updated} updated out of {len(docs)})")
+    except Exception as e:
+        print(f"⚠️ Expiry flag refresh failed (non-fatal): {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler."""
+    print("🚀 Starting EduBot+ Backend...")
+    print("📦 Initializing database...")
+    await init_db()
+    print("✅ Database initialized")
+
+    await _startup_seed_and_sync()
+
     print("🤖 LangGraph Agent ready")
     print("💬 Multi-model chatbot system active")
 
-    # Refresh document expiry flags on startup
-    print("⏰ Refreshing document expiry flags...")
-    try:
-        from app.db.database import AsyncSessionLocal as _ExpirySession
-        from app.db.models import Document as _Doc
-        from datetime import datetime as _dt, timezone as _tz
-        from sqlalchemy import select as _sel
-
-        async with _ExpirySession() as _sess:
-            _now = _dt.now(_tz.utc)
-            _res = await _sess.execute(_sel(_Doc))
-            _docs = _res.scalars().all()
-            _upd = 0
-            for _d in _docs:
-                _should = _d.expiry_date is not None and _d.expiry_date <= _now
-                if _d.is_expired != _should:
-                    _d.is_expired = _should
-                    _upd += 1
-            if _upd:
-                await _sess.commit()
-            print(f"✅ Expiry flags refreshed ({_upd} updated out of {len(_docs)})")
-    except Exception as e:
-        print(f"⚠️ Expiry flag refresh failed (non-fatal): {e}")
-    
     yield
-    
-    # Shutdown
+
     print("👋 Shutting down EduBot+ Backend...")
 
 
@@ -150,11 +149,18 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint — verifies database connectivity."""
+    db_status = "disconnected"
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        pass
     return {
-        "status": "healthy",
+        "status": "healthy" if db_status == "connected" else "degraded",
         "agent": "LangGraph Agent",
-        "database": "connected",
+        "database": db_status,
     }
 
 

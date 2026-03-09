@@ -29,7 +29,7 @@ from fastembed import TextEmbedding
 from app.config import QDRANT_URL, QDRANT_API_KEY
 
 COLLECTION_NAME = "edubot_documents"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384  # Dimension of all-MiniLM-L6-v2
 CHUNK_SIZE = 800     # ~800 characters per chunk
 CHUNK_OVERLAP = 80   # ~10% overlap

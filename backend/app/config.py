@@ -52,8 +52,13 @@ EDUCATIONAL_DIR = DATA_DIR / "Educational"
 ALLOWED_EXTENSIONS = {'.txt', '.pdf', '.docx'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+# Restricted email domain — users with this domain have limited permissions
+RESTRICTED_EMAIL_DOMAIN = os.getenv("RESTRICTED_EMAIL_DOMAIN", "@pvpsit.ac.in")
+# Admin email domain — users with this domain are auto-granted admin
+ADMIN_EMAIL_DOMAIN = os.getenv("ADMIN_EMAIL_DOMAIN", "@pvpsiddhartha.ac.in")
+
 # Default AI Provider & API Keys (university-level defaults from .env)
-DEFAULT_AI_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "")
+DEFAULT_AI_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "auto")
 DEFAULT_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 DEFAULT_OPENAI_MODEL = os.getenv("OPENAI_MODEL", "")
 DEFAULT_GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")

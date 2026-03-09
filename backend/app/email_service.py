@@ -4,18 +4,92 @@ import random
 import string
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# In-memory OTP storage (use Redis in production)
-otp_store: Dict[str, dict] = {}
+# ---------------------------------------------------------------------------
+# OTP storage backed by PostgreSQL (serverless-safe)
+# ---------------------------------------------------------------------------
 
-# Separate OTP store for password reset
-password_reset_otp_store: Dict[str, dict] = {}
+def _get_sync_session():
+    """Create a sync SQLAlchemy session for OTP operations."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.config import DATABASE_URL_SYNC
+    import ssl as _ssl
+
+    connect_args = {}
+    if os.getenv("DATABASE_SSL", "true").lower() != "false":
+        ssl_context = _ssl.create_default_context()
+        connect_args["sslmode"] = "require"
+
+    eng = create_engine(DATABASE_URL_SYNC, connect_args=connect_args, pool_pre_ping=True)
+    Session = sessionmaker(bind=eng)
+    return Session()
+
+
+def _store_otp_db(email: str, otp: str, purpose: str,
+                  username: str = None, hashed_password: str = None) -> None:
+    """Store OTP in PostgreSQL, replacing any existing one for the same email+purpose."""
+    from app.db.models import OTPToken
+    from sqlalchemy import and_
+
+    session = _get_sync_session()
+    try:
+        # Delete any existing OTP for this email+purpose
+        session.query(OTPToken).filter(
+            and_(OTPToken.email == email, OTPToken.purpose == purpose)
+        ).delete()
+
+        token = OTPToken(
+            email=email,
+            otp=otp,
+            purpose=purpose,
+            username=username,
+            hashed_password=hashed_password,
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+        )
+        session.add(token)
+        session.commit()
+    finally:
+        session.close()
+
+
+def _verify_otp_db(email: str, otp: str, purpose: str) -> Optional[dict]:
+    """Verify OTP from PostgreSQL. Returns stored data if valid, else None."""
+    from app.db.models import OTPToken
+    from sqlalchemy import and_
+
+    session = _get_sync_session()
+    try:
+        record = session.query(OTPToken).filter(
+            and_(OTPToken.email == email, OTPToken.purpose == purpose)
+        ).first()
+
+        if not record:
+            return None
+
+        if datetime.now(timezone.utc) > record.expires_at:
+            session.delete(record)
+            session.commit()
+            return None
+
+        if not hmac.compare_digest(record.otp, otp):
+            return None
+
+        data = {
+            "username": record.username,
+            "hashed_password": record.hashed_password,
+        }
+        session.delete(record)  # OTP is single-use
+        session.commit()
+        return data
+    finally:
+        session.close()
 
 
 def generate_otp() -> str:
@@ -248,35 +322,14 @@ def send_email(to_email: str, subject: str, html_content: str) -> bool:
 
 
 def store_otp(email: str, otp: str, username: str, hashed_password: str) -> None:
-    """Store OTP with expiration time and pre-hashed password."""
-    otp_store[email] = {
-        'otp': otp,
-        'username': username,
-        'hashed_password': hashed_password,
-        'expires_at': datetime.now() + timedelta(minutes=10)
-    }
+    """Store registration OTP in PostgreSQL."""
+    _store_otp_db(email, otp, purpose="registration",
+                  username=username, hashed_password=hashed_password)
 
 
 def verify_otp(email: str, otp: str) -> Optional[dict]:
-    """Verify OTP and return stored data if valid."""
-    stored = otp_store.get(email)
-    
-    if not stored:
-        return None
-    
-    if datetime.now() > stored['expires_at']:
-        del otp_store[email]
-        return None
-    
-    if not hmac.compare_digest(stored['otp'], otp):
-        return None
-    
-    data = {
-        'username': stored['username'],
-        'hashed_password': stored['hashed_password']
-    }
-    del otp_store[email]  # OTP is single use
-    return data
+    """Verify registration OTP. Returns stored data if valid."""
+    return _verify_otp_db(email, otp, purpose="registration")
 
 
 def send_otp_email(email: str, username: str, hashed_password: str) -> bool:
@@ -368,29 +421,14 @@ def get_password_reset_email_template(otp: str, username: str) -> str:
 
 
 def store_password_reset_otp(email: str, otp: str) -> None:
-    """Store password reset OTP with expiration time."""
-    password_reset_otp_store[email] = {
-        'otp': otp,
-        'expires_at': datetime.now() + timedelta(minutes=10)
-    }
+    """Store password reset OTP in PostgreSQL."""
+    _store_otp_db(email, otp, purpose="password_reset")
 
 
 def verify_password_reset_otp(email: str, otp: str) -> bool:
     """Verify password reset OTP. Returns True if valid."""
-    stored = password_reset_otp_store.get(email)
-    
-    if not stored:
-        return False
-    
-    if datetime.now() > stored['expires_at']:
-        del password_reset_otp_store[email]
-        return False
-    
-    if not hmac.compare_digest(stored['otp'], otp):
-        return False
-    
-    del password_reset_otp_store[email]  # OTP is single use
-    return True
+    result = _verify_otp_db(email, otp, purpose="password_reset")
+    return result is not None
 
 
 def send_password_reset_otp_email(email: str, username: str) -> bool:

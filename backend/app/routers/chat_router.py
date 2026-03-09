@@ -108,14 +108,18 @@ async def send_message_prompt_public(
 async def get_user_chats(
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    limit: int = 50,
+    offset: int = 0,
 ):
-    """Get all chats for the authenticated user."""
+    """Get chats for the authenticated user with pagination."""
     
     result = await session.execute(
         select(Chat)
         .where(Chat.user_id == uuid.UUID(current_user["user_id"]))
         .where(Chat.archived_at.is_(None))
         .order_by(Chat.updated_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     chats = result.scalars().all()
     

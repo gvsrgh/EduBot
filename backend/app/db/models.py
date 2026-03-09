@@ -134,3 +134,24 @@ class ScraperRun(Base):
 
     def __repr__(self):
         return f"<ScraperRun {self.id} [{self.status}]>"
+
+
+class OTPToken(Base):
+    """
+    OTP tokens stored in PostgreSQL for serverless compatibility.
+
+    Replaces in-memory OTP dicts that are lost across Vercel cold starts.
+    """
+    __tablename__ = "otp_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(255), nullable=False, index=True)
+    otp = Column(String(10), nullable=False)
+    purpose = Column(String(20), nullable=False)  # 'registration' or 'password_reset'
+    username = Column(String(100), nullable=True)
+    hashed_password = Column(String(255), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<OTPToken {self.email} [{self.purpose}]>"

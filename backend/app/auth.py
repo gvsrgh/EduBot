@@ -9,7 +9,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRY
+from app.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRY, ADMIN_EMAIL_DOMAIN
 from app.db.models import User
 from app.db.database import get_session
 
@@ -126,12 +126,12 @@ async def get_current_admin_user(
             detail="Admin privileges required",
         )
     
-    # Verify the email domain is @pvpsiddhartha.ac.in
+    # Verify the email domain
     email = current_user.get("email", "")
-    if not email.endswith("@pvpsiddhartha.ac.in"):
+    if not email.endswith(ADMIN_EMAIL_DOMAIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access is restricted to @pvpsiddhartha.ac.in domain only",
+            detail=f"Admin access is restricted to {ADMIN_EMAIL_DOMAIN} domain only",
         )
     
     return current_user
