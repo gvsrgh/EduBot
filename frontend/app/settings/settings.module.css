@@ -997,20 +997,29 @@
   background: var(--text-muted);
 }
 
+/* File Card Wrapper (holds header + expanded content) */
+.kbFileCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  overflow: hidden;
+}
+
+.kbFileCard:hover {
+  border-color: var(--border-medium);
+}
+
 /* File Item Card */
 .kbFileItem {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
   padding: var(--spacing-md);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
   transition: all var(--transition-fast);
 }
 
 .kbFileItem:hover {
-  border-color: var(--border-medium);
   background: var(--bg-hover);
   transform: translateX(2px);
 }
@@ -1086,7 +1095,7 @@
   transition: all var(--transition-fast);
 }
 
-.kbFileItem:hover .kbDeleteBtn {
+.kbFileCard:hover .kbDeleteBtn {
   opacity: 0.8;
 }
 
@@ -1123,6 +1132,59 @@
 }
 
 /* ---- Document Expiry Management ---- */
+
+/* Chevron indicator for expand/collapse */
+.kbChevron {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+  user-select: none;
+}
+
+.kbFileCard:hover .kbChevron {
+  opacity: 1;
+}
+
+/* Expanded file content area */
+.kbFileContent {
+  border-top: 1px solid var(--border-light);
+  padding: var(--spacing-md);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.kbContentPre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+.kbContentLoading {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: var(--spacing-lg) 0;
+}
+
+.kbContentTruncated {
+  margin-top: var(--spacing-sm);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  color: rgb(251, 191, 36);
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
 
 /* Expired file row highlight */
 .kbFileExpired {
@@ -1181,7 +1243,7 @@
   transition: all var(--transition-fast);
 }
 
-.kbFileItem:hover .kbExpiryBtn {
+.kbFileCard:hover .kbExpiryBtn {
   opacity: 0.7;
 }
 

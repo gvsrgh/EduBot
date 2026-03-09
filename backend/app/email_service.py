@@ -22,12 +22,19 @@ def _get_sync_session():
     from app.config import DATABASE_URL_SYNC
     import ssl as _ssl
 
+    # Ensure the URL uses the psycopg (v3) dialect, not psycopg2
+    url = DATABASE_URL_SYNC
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+    elif url.startswith("postgresql+psycopg2://"):
+        url = url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
+
     connect_args = {}
     if os.getenv("DATABASE_SSL", "true").lower() != "false":
         ssl_context = _ssl.create_default_context()
         connect_args["sslmode"] = "require"
 
-    eng = create_engine(DATABASE_URL_SYNC, connect_args=connect_args, pool_pre_ping=True)
+    eng = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
     Session = sessionmaker(bind=eng)
     return Session()
 

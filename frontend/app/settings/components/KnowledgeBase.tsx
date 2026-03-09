@@ -24,6 +24,9 @@ export default function KnowledgeBase() {
   const [editingExpiry, setEditingExpiry] = useState<string | null>(null);
   const [expiryInput, setExpiryInput] = useState('');
   const [savingExpiry, setSavingExpiry] = useState<string | null>(null);
+  const [expandedFile, setExpandedFile] = useState<string | null>(null);
+  const [fileContents, setFileContents] = useState<Record<string, { content: string; truncated: boolean }>>({});
+  const [loadingContent, setLoadingContent] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{
     show: boolean;
     success: boolean;
@@ -189,6 +192,40 @@ export default function KnowledgeBase() {
     }
   };
 
+  const toggleFileContent = async (file: UploadedFile) => {
+    const key = `${file.category}/${file.filename}`;
+    if (expandedFile === key) {
+      setExpandedFile(null);
+      return;
+    }
+    setExpandedFile(key);
+
+    // Already fetched
+    if (fileContents[key]) return;
+
+    setLoadingContent(key);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(
+        `${API_BASE}/settings/files/${encodeURIComponent(file.category)}/${encodeURIComponent(file.filename)}/content`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setFileContents(prev => ({ ...prev, [key]: data }));
+      } else {
+        setFileContents(prev => ({ ...prev, [key]: { content: 'Failed to load content.', truncated: false } }));
+      }
+    } catch {
+      setFileContents(prev => ({ ...prev, [key]: { content: 'Failed to load content.', truncated: false } }));
+    } finally {
+      setLoadingContent(null);
+    }
+  };
+
   const showStatus = (success: boolean, message: string) => {
     setStatusMessage({ show: true, success, message });
     setTimeout(() => setStatusMessage({ show: false, success: false, message: '' }), 3000);
@@ -314,86 +351,116 @@ export default function KnowledgeBase() {
             return (
               <div
                 key={file.id || index}
-                className={`${styles.kbFileItem} ${file.is_expired ? styles.kbFileExpired : ''}`}
+                className={`${styles.kbFileCard} ${file.is_expired ? styles.kbFileExpired : ''}`}
               >
-                <div className={styles.kbFileIcon}>
-                  {getCategoryIcon(file.category)}
-                </div>
-                <div className={styles.kbFileDetails}>
-                  <p className={styles.kbFileName} title={file.filename}>
-                    {file.filename}
-                  </p>
-                  <div className={styles.kbFileMeta}>
-                    <span className={`${styles.kbCategoryBadge} ${getCategoryColor(file.category)}`}>
-                      {file.category}
-                    </span>
-                    <span className={styles.kbFileSizeDot}>·</span>
-                    <span>{formatFileSize(file.size)}</span>
-                    <span className={styles.kbFileSizeDot}>·</span>
-                    <span>{formatDate(file.modified, file.upload_date)}</span>
-                    {expiryLabel && (
-                      <>
-                        <span className={styles.kbFileSizeDot}>·</span>
-                        <span className={`${styles.kbExpiryTag} ${styles[`kbExpiry_${expiryLabel.status}`]}`}>
-                          ⏰ {expiryLabel.text}
-                        </span>
-                      </>
+                <div
+                  className={styles.kbFileItem}
+                  onClick={() => toggleFileContent(file)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className={styles.kbFileIcon}>
+                    {getCategoryIcon(file.category)}
+                  </div>
+                  <div className={styles.kbFileDetails}>
+                    <p className={styles.kbFileName} title={file.filename}>
+                      {file.filename}
+                    </p>
+                    <div className={styles.kbFileMeta}>
+                      <span className={`${styles.kbCategoryBadge} ${getCategoryColor(file.category)}`}>
+                        {file.category}
+                      </span>
+                      <span className={styles.kbFileSizeDot}>·</span>
+                      <span>{formatFileSize(file.size)}</span>
+                      <span className={styles.kbFileSizeDot}>·</span>
+                      <span>{formatDate(file.modified, file.upload_date)}</span>
+                      {expiryLabel && (
+                        <>
+                          <span className={styles.kbFileSizeDot}>·</span>
+                          <span className={`${styles.kbExpiryTag} ${styles[`kbExpiry_${expiryLabel.status}`]}`}>
+                            ⏰ {expiryLabel.text}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Inline Expiry Editor */}
+                    {isEditing && (
+                      <div className={styles.kbExpiryEditor} onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="date"
+                          value={expiryInput}
+                          onChange={(e) => setExpiryInput(e.target.value)}
+                          className={styles.kbExpiryInput}
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                        <button
+                          onClick={() => saveExpiry(file)}
+                          disabled={savingExpiry === fileKey}
+                          className={styles.kbExpirySave}
+                          title="Save expiry"
+                        >
+                          {savingExpiry === fileKey ? '⏳' : '✓'}
+                        </button>
+                        {file.expiry_date && (
+                          <button
+                            onClick={() => removeExpiry(file)}
+                            disabled={savingExpiry === fileKey}
+                            className={styles.kbExpiryRemove}
+                            title="Remove expiry"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 
-                  {/* Inline Expiry Editor */}
-                  {isEditing && (
-                    <div className={styles.kbExpiryEditor}>
-                      <input
-                        type="date"
-                        value={expiryInput}
-                        onChange={(e) => setExpiryInput(e.target.value)}
-                        className={styles.kbExpiryInput}
-                        min={new Date().toISOString().split('T')[0]}
-                      />
-                      <button
-                        onClick={() => saveExpiry(file)}
-                        disabled={savingExpiry === fileKey}
-                        className={styles.kbExpirySave}
-                        title="Save expiry"
-                      >
-                        {savingExpiry === fileKey ? '⏳' : '✓'}
-                      </button>
-                      {file.expiry_date && (
-                        <button
-                          onClick={() => removeExpiry(file)}
-                          disabled={savingExpiry === fileKey}
-                          className={styles.kbExpiryRemove}
-                          title="Remove expiry"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
+                  {/* Expiry toggle button */}
+                  {file.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleSetExpiry(file); }}
+                      className={`${styles.kbExpiryBtn} ${isEditing ? styles.kbExpiryBtnActive : ''}`}
+                      title={isEditing ? 'Close expiry editor' : 'Set expiry date'}
+                    >
+                      ⏰
+                    </button>
                   )}
-                </div>
 
-                {/* Expiry toggle button */}
-                {file.id && (
                   <button
                     type="button"
-                    onClick={() => handleSetExpiry(file)}
-                    className={`${styles.kbExpiryBtn} ${isEditing ? styles.kbExpiryBtnActive : ''}`}
-                    title={isEditing ? 'Close expiry editor' : 'Set expiry date'}
+                    onClick={(e) => { e.stopPropagation(); deleteFile(file.category, file.filename); }}
+                    className={styles.kbDeleteBtn}
+                    title="Delete file"
+                    disabled={deletingFile === key}
                   >
-                    ⏰
+                    {deletingFile === key ? '⏳' : '🗑️'}
                   </button>
-                )}
 
-                <button
-                  type="button"
-                  onClick={() => deleteFile(file.category, file.filename)}
-                  className={styles.kbDeleteBtn}
-                  title="Delete file"
-                  disabled={deletingFile === key}
-                >
-                  {deletingFile === key ? '⏳' : '🗑️'}
-                </button>
+                  <span className={styles.kbChevron}>
+                    {expandedFile === key ? '▴' : '▾'}
+                  </span>
+                </div>
+
+                {/* Expanded File Content */}
+                {expandedFile === key && (
+                  <div className={styles.kbFileContent}>
+                    {loadingContent === key ? (
+                      <div className={styles.kbContentLoading}>Loading content...</div>
+                    ) : fileContents[key] ? (
+                      <>
+                        <pre className={styles.kbContentPre}>{fileContents[key].content}</pre>
+                        {fileContents[key].truncated && (
+                          <div className={styles.kbContentTruncated}>
+                            ⚠️ Content truncated (file too large to display in full)
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className={styles.kbContentLoading}>No content available.</div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })

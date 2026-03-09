@@ -522,6 +522,43 @@ async def list_uploaded_files(
     return {"files": files}
 
 
+@router.get("/files/{category}/{filename}/content")
+async def get_file_content(
+    category: str,
+    filename: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Return the text content of an uploaded knowledge-base file.
+    Limited to 100 KB to avoid oversized responses.
+    """
+    category_dirs = {
+        "Academic": ACADEMIC_DIR,
+        "Administrative": ADMINISTRATIVE_DIR,
+        "Educational": EDUCATIONAL_DIR,
+    }
+    base_dir = category_dirs.get(category)
+    if not base_dir:
+        raise HTTPException(status_code=400, detail="Invalid category")
+
+    # Resolve and ensure the path stays inside the category directory
+    file_path = (base_dir / filename).resolve()
+    if not str(file_path).startswith(str(base_dir.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    MAX_CONTENT = 100 * 1024  # 100 KB
+    try:
+        raw = file_path.read_text(encoding="utf-8", errors="replace")
+        truncated = len(raw) > MAX_CONTENT
+        content = raw[:MAX_CONTENT]
+        return {"content": content, "truncated": truncated}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+
 @router.delete("/files/{category}/{filename}")
 async def delete_uploaded_file(
     category: str,

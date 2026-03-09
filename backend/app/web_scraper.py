@@ -28,24 +28,7 @@ from app.config import ACADEMIC_DIR, ADMINISTRATIVE_DIR, EDUCATIONAL_DIR
 
 # ── Default target pages ──────────────────────────────────────────────
 
-DEFAULT_URLS: list[str] = [
-    "https://pvpsiddhartha.ac.in/",
-    "https://pvpsiddhartha.ac.in/about.aspx",
-    "https://pvpsiddhartha.ac.in/admissions.aspx",
-    "https://pvpsiddhartha.ac.in/placements.aspx",
-    "https://pvpsiddhartha.ac.in/departments.aspx",
-    "https://pvpsiddhartha.ac.in/research.aspx",
-    "https://pvpsiddhartha.ac.in/facilities.aspx",
-    "https://pvpsiddhartha.ac.in/contactus.aspx",
-    "https://pvpsiddhartha.ac.in/mandatory_disclosures.aspx",
-    "https://pvpsiddhartha.ac.in/CSE.aspx",
-    "https://pvpsiddhartha.ac.in/IT.aspx",
-    "https://pvpsiddhartha.ac.in/ECE.aspx",
-    "https://pvpsiddhartha.ac.in/EEE.aspx",
-    "https://pvpsiddhartha.ac.in/MECH.aspx",
-    "https://pvpsiddhartha.ac.in/CIVIL.aspx",
-    "https://pvpsiddhartha.ac.in/MBA.aspx",
-]
+DEFAULT_URLS: list[str] = []
 
 # ── Category detection heuristics ─────────────────────────────────────
 
