@@ -317,8 +317,11 @@ def send_email(to_email: str, subject: str, html_content: str) -> bool:
         html_part = MIMEText(html_content, 'html')
         msg.attach(html_part)
         
-        # Connect to Gmail SMTP
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        # Connect to Gmail SMTP via STARTTLS (port 587, works on Railway/Vercel)
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
             server.login(email_user, email_pass)
             server.sendmail(email_user, to_email, msg.as_string())
         
