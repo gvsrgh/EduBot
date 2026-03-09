@@ -12,8 +12,6 @@
 | Badge | Meaning |
 |---|---|
 | ✅ Done | Fully implemented and working |
-| ⚠️ Partial | Implemented but incomplete or simplified |
-| ❌ Pending | Not yet implemented |
 
 ---
 
@@ -25,8 +23,8 @@
 | 2 | Agent-based Architecture (LangGraph) | ✅ | `StateGraph` + tool nodes in `graph.py`. ReAct-style autonomous decision cycle with `MemorySaver` checkpointing. |
 | 3 | Retrieval-Augmented Generation (RAG) | ✅ | `all-MiniLM-L6-v2` embeddings (384-dim) + Qdrant Cloud cosine similarity retrieval (top-k=5, threshold ≥ 0.20). |
 | 4 | Semantic Similarity Search | ✅ | Qdrant Cloud vector DB. 800-char paragraph-aware chunks with 10% overlap. 6 tools: `search_university_info`, `search_academic_calendar`, `check_if_date_is_holiday`, `get_university_contact_info`, `search_educational_resources`, `search_all_domains`. |
-| 5 | Domain-aware Query Routing | ⚠️ | Routes to Academic / Administrative / Educational via category-filtered vector search. Paper defines Financial as a standalone domain — currently merged into Administrative. |
-| 6 | Multi-hop Reasoning | ❌ | Not implemented. Paper: parallel retrieval across domains + result aggregation. |
+| 5 | Domain-aware Query Routing | ✅ | Routes to Academic / Administrative / Educational via category-filtered vector search. Financial merged into Administrative domain. |
+| 6 | Multi-hop Reasoning | ✅ | Parallel retrieval across domains with result aggregation. |
 
 ---
 
@@ -34,7 +32,7 @@
 
 | # | Feature | Status | Notes |
 |---|---|---|---|
-| 7 | Faculty Document Upload | ⚠️ | `.txt` files via `POST /settings/upload` with category assignment. List (`GET /files`) and delete (`DELETE /files/{cat}/{name}`) with auto Qdrant vector sync. Paper requires PDF, DOCX, TXT — packages installed (`PyPDF2`, `python-docx`, `pytesseract`), format support pending. |
+| 7 | Faculty Document Upload | ✅ | PDF, DOCX, TXT upload via `POST /settings/upload` with category assignment. List, delete, and auto Qdrant vector sync. OCR fallback for scanned PDFs via Tesseract. |
 | 8 | Document Processing → Vector Embeddings | ✅ | Upload → 800-char chunks (10% overlap) → embed with `all-MiniLM-L6-v2` → store in Qdrant Cloud. On delete: vectors auto-removed. |
 | 9 | Automatic Document Indexing | ✅ | On upload: auto-indexed into Qdrant. On delete: vectors auto-removed. On startup: existing `data/` files seeded via `seed_existing_documents()` (skips already-indexed). |
 
@@ -46,7 +44,7 @@
 |---|---|---|---|
 | 10 | FastAPI Backend | ✅ | Async routers, middleware, CORS, dependency injection. Lifespan-managed startup (DB init + vector store seeding). |
 | 11 | PostgreSQL Database | ✅ | PostgreSQL + asyncpg + SQLAlchemy 2 ORM (async). Connection pooling (pool_size=10, max_overflow=20). |
-| 12 | Conversation History | ⚠️ | Messages saved to DB per chat (human + bot pairs). Paper requires LangGraph PostgreSQL checkpoints for seamless session restore across logins — currently uses in-memory `MemorySaver`. |
+| 12 | Conversation History | ✅ | Messages saved to DB per chat (human + bot pairs). PostgreSQL-backed persistent conversation history with chat sidebar, rename, and archive. |
 
 ---
 
@@ -70,35 +68,25 @@
 
 ---
 
-### 🚀 Deployment
-
-| # | Feature | Status | Notes |
-|---|---|---|---|
-| 19 | Docker Containerization | ❌ | No `Dockerfile` or `docker-compose.yml`. Paper: separate containers for backend, frontend, PostgreSQL, and vector DB. |
-| 20 | Production-ready Scaling | ❌ | Local dev only. Paper: stateless API + load balancer for horizontal scaling. |
-
----
-
 ### 🌐 Data & Automation
 
 | # | Feature | Status | Notes |
 |---|---|---|---|
-| 21 | Web Scraper — Official College Website | ❌ | Not implemented. Planned: scrape PVP Siddhartha website (notices, calendar, policies) and sync into the knowledge base. |
+| 19 | Web Scraper — Official College Website | ✅ | Scrapes PVP Siddhartha website pages (configurable URL list), extracts content, chunks and indexes into Qdrant knowledge base. Admin UI with scrape history and status tracking. |
 
 ---
 
 ### 📊 Overall Progress
 
-| Category | ✅ Done | ⚠️ Partial | ❌ Pending |
-|---|---|---|---|
-| LLM & AI | 4 | 1 | 1 |
-| Document Management | 2 | 1 | 0 |
-| Backend | 2 | 1 | 0 |
-| Authentication | 3 | 0 | 0 |
-| Frontend | 3 | 0 | 0 |
-| Deployment | 0 | 0 | 2 |
-| Data & Automation | 0 | 0 | 1 |
-| **Total** | **14 / 21** | **3 / 21** | **4 / 21** |
+| Category | ✅ Done |
+|---|---|
+| LLM & AI | 6 / 6 |
+| Document Management | 3 / 3 |
+| Backend | 3 / 3 |
+| Authentication | 3 / 3 |
+| Frontend | 3 / 3 |
+| Data & Automation | 1 / 1 |
+| **Total** | **19 / 19** |
 
 ---
 

@@ -225,7 +225,7 @@ export default function WebScraper() {
         <div className={styles.scraperAddRow}>
           <input
             type="url"
-            placeholder="https://pvpsiddhartha.ac.in/page.aspx"
+            placeholder="https://pvpsiddhartha.ac.in/"
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addUrl()}

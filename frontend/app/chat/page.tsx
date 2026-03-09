@@ -401,10 +401,10 @@ export default function ChatPage() {
                 <h2>Welcome to EduBot+! 👋</h2>
                 <p>Ask me anything about the university:</p>
                 <ul>
-                  <li>What is the B.Tech fee structure for management and convenor quota?</li>
-                  <li>When is Republic Day in 2026?</li>
-                  <li>What are the exam dates for I B.Tech first semester?</li>
-                  <li>When does the IV B.Tech second semester start?</li>
+                  <li>What are the B.Tech fee structures for convenor and management quota?</li>
+                  <li>When is Ugadi holiday in 2026?</li>
+                  <li>What departments are available at PVPSIT?</li>
+                  <li>When do IV B.Tech second semester classes start?</li>
                 </ul>
               </div>
             )}
