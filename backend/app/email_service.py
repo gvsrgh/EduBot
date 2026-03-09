@@ -301,6 +301,7 @@ def get_welcome_email_template(username: str, email: str) -> str:
 
 def send_email(to_email: str, subject: str, html_content: str) -> bool:
     """Send an email using SMTP."""
+    import socket
     try:
         email_user = os.getenv("EMAIL_USER")
         email_pass = os.getenv("EMAIL_PASS")
@@ -317,11 +318,13 @@ def send_email(to_email: str, subject: str, html_content: str) -> bool:
         html_part = MIMEText(html_content, 'html')
         msg.attach(html_part)
         
-        # Connect to Gmail SMTP via STARTTLS (port 587, works on Railway/Vercel)
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.ehlo()
+        # Resolve Gmail SMTP to IPv4 explicitly (Railway IPv6 is unreachable)
+        gmail_ip = socket.getaddrinfo('smtp.gmail.com', 587, socket.AF_INET)[0][4][0]
+        
+        with smtplib.SMTP(gmail_ip, 587, timeout=15) as server:
+            server.ehlo('edubot')
             server.starttls()
-            server.ehlo()
+            server.ehlo('edubot')
             server.login(email_user, email_pass)
             server.sendmail(email_user, to_email, msg.as_string())
         
