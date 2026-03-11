@@ -32,7 +32,11 @@ def _get_sync_session():
     connect_args = {}
     if os.getenv("DATABASE_SSL", "true").lower() != "false":
         ssl_context = _ssl.create_default_context()
-        connect_args["sslmode"] = "require"
+        if os.getenv("DATABASE_SSL_VERIFY", "false").lower() == "false":
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = _ssl.CERT_NONE
+        connect_args["sslmode"] = "verify-full"
+        connect_args["ssl_context"] = ssl_context
 
     eng = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
     Session = sessionmaker(bind=eng)

@@ -12,6 +12,10 @@ clean_url = DATABASE_URL.split('?')[0]
 connect_args = {}
 if os.getenv("DATABASE_SSL", "true").lower() != "false":
     ssl_context = ssl.create_default_context()
+    # Some Cloud SQL public-IP setups use cert chains unavailable on local machines.
+    if os.getenv("DATABASE_SSL_VERIFY", "false").lower() == "false":
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
     connect_args["ssl"] = ssl_context
 
 # PostgreSQL async engine with connection pooling
