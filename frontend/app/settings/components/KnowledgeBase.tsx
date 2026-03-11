@@ -295,7 +295,7 @@ export default function KnowledgeBase() {
     <div className={styles.kbContainer}>
       <div className={styles.kbHeader}>
         <h3>📂 Knowledge Base</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className={styles.kbHeaderMeta}>
           <span className={styles.kbCount}>{files.length} file{files.length !== 1 ? 's' : ''}</span>
           {expiredCount > 0 && (
             <span className={styles.kbExpiredBadge}>

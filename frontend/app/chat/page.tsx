@@ -22,10 +22,12 @@ export default function ChatPage() {
   const [chatId, setChatId] = useState<string | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [chatsLoading, setChatsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -53,12 +55,35 @@ export default function ChatPage() {
     loadChats();
   }, [loadChats]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarOpen(false);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Focus edit input when editing
   useEffect(() => {
     if (editingChatId) {
       editInputRef.current?.focus();
     }
   }, [editingChatId]);
+
+  // Auto-expand input as text grows, with a capped height.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = '44px';
+    el.style.height = `${Math.min(el.scrollHeight, 136)}px`;
+    el.style.overflowY = el.scrollHeight > 136 ? 'auto' : 'hidden';
+  }, [input]);
 
   const loadChatMessages = async (selectedChatId: string) => {
     if (!user) return;
@@ -71,6 +96,9 @@ export default function ChatPage() {
       }
       setMessages(loadedMessages);
       setChatId(selectedChatId);
+      if (isMobile) {
+        setSidebarOpen(false);
+      }
     } catch (err) {
       console.error('Failed to load chat messages:', err);
     }
@@ -79,6 +107,15 @@ export default function ChatPage() {
   const handleNewChat = () => {
     setMessages([]);
     setChatId(null);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  };
+
+  const formatAssistantText = (text: string) => {
+    return text
+      .replace(/([.!?])([A-Z])/g, '$1 $2')
+      .replace(/([a-zA-Z])(\d+\.)/g, '$1 $2');
   };
 
   const handleLogout = () => {
@@ -284,6 +321,15 @@ export default function ChatPage() {
 
   return (
     <div className={styles.container}>
+      {user && isMobile && sidebarOpen && (
+        <button
+          type="button"
+          className={styles.sidebarOverlay}
+          aria-label="Close conversation history"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar - only for authenticated users */}
       {user && (
         <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
@@ -368,8 +414,8 @@ export default function ChatPage() {
                 {sidebarOpen ? '◀' : '▶'}
               </button>
             )}
-            <div>
-              <h1>🎓 EduBot+</h1>
+            <div className={styles.brandBlock}>
+              <h1 className={styles.brandTitle}>🎓 EduBot+</h1>
               <span className={styles.username}>Welcome, {user ? user.username : 'Guest'}</span>
             </div>
           </div>
@@ -424,7 +470,7 @@ export default function ChatPage() {
                           🔍 {msg.status}
                         </div>
                       )}
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown>{formatAssistantText(msg.content)}</ReactMarkdown>
                       {msg.streaming && <span className={styles.streamCursor}>▊</span>}
                     </>
                   ) : (
@@ -447,6 +493,7 @@ export default function ChatPage() {
 
           <form onSubmit={handleSubmit} className={styles.inputForm}>
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => {
@@ -455,12 +502,19 @@ export default function ChatPage() {
                   handleSubmit(e);
                 }
               }}
-              placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+              placeholder={isMobile ? 'Type message...' : 'Type your message... (Press Enter to send, Shift+Enter for new line)'}
+              aria-label="Type message"
               disabled={loading}
-              rows={3}
+              rows={1}
             />
-            <button type="submit" disabled={loading || !input.trim()}>
-              {loading ? 'Sending...' : 'Send'}
+            <button
+              type="submit"
+              className={styles.sendButton}
+              disabled={loading || !input.trim()}
+              aria-label={loading ? 'Sending message' : 'Send message'}
+            >
+              <span className={styles.sendLabel}>{loading ? 'Sending...' : 'Send'}</span>
+              <span className={styles.sendIcon} aria-hidden="true">➤</span>
             </button>
           </form>
         </main>

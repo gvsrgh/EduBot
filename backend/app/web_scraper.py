@@ -72,6 +72,69 @@ def categorize_content(url: str, text: str) -> str:
 _STRIP_TAGS = {"script", "style", "nav", "footer", "header", "noscript", "iframe", "form"}
 
 
+def _normalize_text(text: str) -> str:
+    """Normalize and compact text extracted from HTML."""
+    lines = [ln.strip() for ln in text.splitlines()]
+    return "\n".join(ln for ln in lines if ln)
+
+
+def _extract_main_text(soup: BeautifulSoup) -> str:
+    """Extract text from common content containers; choose the richest block."""
+    candidates = [
+        soup.find("main"),
+        soup.find("article"),
+        soup.select_one("#content"),
+        soup.select_one(".content"),
+        soup.select_one(".entry-content"),
+        soup.find("body"),
+        soup,
+    ]
+    texts: list[str] = []
+    for node in candidates:
+        if not node:
+            continue
+        txt = _normalize_text(node.get_text(separator="\n", strip=True))
+        if txt:
+            texts.append(txt)
+    return max(texts, key=len) if texts else ""
+
+
+def _extract_metadata_text(soup: BeautifulSoup) -> str:
+    """Fallback text from title/headings/metadata when body text is sparse."""
+    parts: list[str] = []
+
+    if soup.title and soup.title.string:
+        t = soup.title.string.strip()
+        if t:
+            parts.append(t)
+
+    for h in soup.find_all(["h1", "h2", "h3"]):
+        t = h.get_text(" ", strip=True)
+        if len(t) >= 4:
+            parts.append(t)
+
+    for m in soup.find_all("meta"):
+        name = (m.get("name") or m.get("property") or "").lower()
+        if name in {"description", "og:description", "twitter:description"}:
+            content = (m.get("content") or "").strip()
+            if len(content) >= 20:
+                parts.append(content)
+
+    for img in soup.find_all("img"):
+        alt = (img.get("alt") or "").strip()
+        if len(alt) >= 4 and alt != "...":
+            parts.append(alt)
+
+    # Deduplicate while preserving order.
+    seen: set[str] = set()
+    unique = []
+    for p in parts:
+        if p not in seen:
+            seen.add(p)
+            unique.append(p)
+    return "\n".join(unique)
+
+
 def clean_html(html: str, url: str = "") -> str:
     """
     Extract meaningful text from raw HTML.
@@ -79,22 +142,28 @@ def clean_html(html: str, url: str = "") -> str:
     Removes scripts, styles, nav/footer chrome, and collapses whitespace.
     Adds the source URL as a header line for provenance.
     """
+    # Stage 1: aggressive cleanup to avoid nav/footer noise.
     soup = BeautifulSoup(html, "html.parser")
-
-    # Drop non-content elements
-    for tag in soup.find_all(_STRIP_TAGS):
+    stripped = BeautifulSoup(str(soup), "html.parser")
+    for tag in stripped.find_all(_STRIP_TAGS):
         tag.decompose()
+    cleaned = _extract_main_text(stripped)
 
-    # Try to grab <main> or <article> first; fall back to <body>
-    content = soup.find("main") or soup.find("article") or soup.find("body") or soup
-    raw_text = content.get_text(separator="\n", strip=True)
-
-    # Collapse multiple blank lines
-    lines = [ln.strip() for ln in raw_text.splitlines()]
-    cleaned = "\n".join(ln for ln in lines if ln)
-
-    # Remove very short scrapes (cookie banners, error pages, etc.)
+    # Stage 2: if too short, try less aggressive extraction before giving up.
     if len(cleaned) < 100:
+        light = BeautifulSoup(str(soup), "html.parser")
+        for tag in light.find_all({"script", "style", "noscript", "iframe", "form"}):
+            tag.decompose()
+        cleaned = _extract_main_text(light)
+
+    # Stage 3: metadata fallback for JS-heavy pages with sparse static text.
+    if len(cleaned) < 100:
+        fallback = _extract_metadata_text(soup)
+        if fallback:
+            cleaned = f"{cleaned}\n{fallback}".strip() if cleaned else fallback
+
+    # Still too short => likely no meaningful server-rendered content.
+    if len(cleaned) < 80:
         return ""
 
     header = f"Source: {url}\nScraped: {datetime.now(timezone.utc).isoformat()}\n\n"

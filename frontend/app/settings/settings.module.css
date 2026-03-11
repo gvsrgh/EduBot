@@ -873,6 +873,12 @@
   border-bottom: 1px solid var(--border-light);
 }
 
+.kbHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .kbHeader h3 {
   color: var(--text-primary);
   font-size: 1.3rem;
@@ -1343,6 +1349,37 @@
     padding: var(--spacing-md);
   }
 
+  .tabNav {
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    padding: 0.35rem;
+    margin-bottom: var(--spacing-lg);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tabNav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabButton {
+    min-width: 146px;
+    flex: 0 0 auto;
+    padding: 0.6rem 0.65rem;
+    font-size: 0.88rem;
+  }
+
+  .tabIcon {
+    font-size: 1.1rem;
+  }
+
+  .tabContent {
+    padding: var(--spacing-lg);
+    min-height: 280px;
+  }
+
   .section {
     padding: var(--spacing-lg);
   }
@@ -1358,6 +1395,78 @@
 
   .cancelButton,
   .saveButton {
+    width: 100%;
+  }
+
+  .categorySelector {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+  }
+
+  .categorySelector > label {
+    white-space: normal;
+  }
+
+  .fileItem {
+    align-items: flex-start;
+  }
+
+  .fileInfo {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fileCategorySelectWrapper {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .removeButton {
+    align-self: flex-end;
+  }
+
+  .kbHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .kbHeaderMeta {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .kbFileItem {
+    padding: 0.6rem;
+    align-items: flex-start;
+    gap: 0.45rem;
+  }
+
+  .kbFileDetails {
+    width: 100%;
+  }
+
+  .kbFileMeta {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .kbDeleteBtn,
+  .kbExpiryBtn,
+  .kbChevron {
+    opacity: 1;
+  }
+
+  .kbExpiryEditor {
+    flex-wrap: wrap;
+  }
+
+  .kbExpiryInput {
     width: 100%;
   }
 }
@@ -1664,5 +1773,54 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.1rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .navbar {
+    padding: 0.7rem;
+  }
+
+  .navTitle {
+    font-size: 1.15rem;
+  }
+
+  .content {
+    padding: 0.7rem;
+  }
+
+  .tabContent {
+    padding: 0.85rem;
+  }
+
+  .tabButton {
+    min-width: 132px;
+    font-size: 0.8rem;
+  }
+
+  .uploadBox {
+    padding: 1rem;
+  }
+
+  .uploadText {
+    font-size: 0.9rem;
+  }
+
+  .uploadHint,
+  .uploadSupported {
+    font-size: 0.76rem;
+  }
+
+  .kbSearchInput {
+    font-size: 0.85rem;
+  }
+
+  .kbFileName {
+    font-size: 0.82rem;
+  }
+
+  .kbPreview {
+    font-size: 0.8rem;
+    max-height: 200px;
   }
 }

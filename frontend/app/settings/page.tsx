@@ -162,6 +162,9 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeTab !== 'model') {
+      return;
+    }
     setSaving(true);
     setError('');
     setSuccess('');

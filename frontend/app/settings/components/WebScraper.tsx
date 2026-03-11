@@ -198,6 +198,7 @@ export default function WebScraper() {
           </p>
         </div>
         <button
+          type="button"
           className={`${styles.scraperBtn} ${styles.scraperBtnPrimary}`}
           onClick={triggerScrape}
           disabled={scraping || urls.length === 0}
@@ -228,10 +229,16 @@ export default function WebScraper() {
             placeholder="https://pvpsiddhartha.ac.in/"
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addUrl()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addUrl();
+              }
+            }}
             className={styles.scraperUrlInput}
           />
           <button
+            type="button"
             className={`${styles.scraperBtn} ${styles.scraperBtnAdd}`}
             onClick={addUrl}
             disabled={!newUrl.trim()}
@@ -255,6 +262,7 @@ export default function WebScraper() {
                   <span className={styles.scraperUrlPath}>{getPath(url)}</span>
                 </div>
                 <button
+                  type="button"
                   className={styles.scraperUrlRemove}
                   onClick={() => removeUrl(url)}
                   title="Remove URL"
