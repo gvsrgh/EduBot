@@ -497,7 +497,17 @@ async def list_uploaded_files(
     files = []
     for doc in db_docs:
         db_keys.add((doc.filename, doc.category))
-        files.append(DocumentResponse.model_validate(doc).model_dump())
+        payload = DocumentResponse.model_validate(doc).model_dump()
+        payload["size"] = payload.get("file_size", 0)
+        upload_date = payload.get("upload_date")
+        if upload_date:
+            try:
+                payload["modified"] = int(datetime.fromisoformat(upload_date).timestamp())
+            except Exception:
+                payload["modified"] = None
+        else:
+            payload["modified"] = None
+        files.append(payload)
 
     # Fallback: also pick up any .txt files on disk not yet tracked in DB
     category_dirs = {
@@ -872,6 +882,7 @@ async def trigger_scrape(
                     # Update existing record
                     doc.file_size = pr.text_length
                     doc.chunk_count = pr.chunks
+                    doc.vector_ids = pr.vector_ids or []
                     doc.updated_at = datetime.now(timezone.utc)
                 else:
                     # Create new record
@@ -882,7 +893,7 @@ async def trigger_scrape(
                         file_type=".txt",
                         file_size=pr.text_length,
                         chunk_count=pr.chunks,
-                        vector_ids=[],
+                        vector_ids=pr.vector_ids or [],
                         uploaded_by=user_id,
                     )
                     session.add(doc)

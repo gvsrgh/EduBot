@@ -9,7 +9,8 @@ interface UploadedFile {
   id?: string;
   filename: string;
   category: string;
-  size: number;
+  size?: number;
+  file_size?: number;
   modified?: number;
   upload_date?: string;
   expiry_date?: string | null;
@@ -231,11 +232,13 @@ export default function KnowledgeBase() {
     setTimeout(() => setStatusMessage({ show: false, success: false, message: '' }), 3000);
   };
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes?: number) => {
+    if (bytes === undefined || bytes === null || Number.isNaN(bytes)) return '—';
     if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
+    if (!Number.isFinite(i) || i < 0 || i >= sizes.length) return `${bytes} B`;
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
@@ -370,7 +373,7 @@ export default function KnowledgeBase() {
                         {file.category}
                       </span>
                       <span className={styles.kbFileSizeDot}>·</span>
-                      <span>{formatFileSize(file.size)}</span>
+                      <span>{formatFileSize(file.size ?? file.file_size)}</span>
                       <span className={styles.kbFileSizeDot}>·</span>
                       <span>{formatDate(file.modified, file.upload_date)}</span>
                       {expiryLabel && (

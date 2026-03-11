@@ -278,7 +278,9 @@ export default function WebScraper() {
       {/* Scrape History */}
       <div className={styles.scraperSection}>
         <h4 className={styles.scraperSectionTitle}>Scrape History</h4>
-        <div className={styles.scraperHistory}>
+        <div
+          className={`${styles.scraperHistory} ${runs.length > 6 ? styles.scraperHistoryScrollable : ''}`}
+        >
           {loadingRuns ? (
             <div className={styles.scraperEmpty}>Loading history...</div>
           ) : runs.length === 0 ? (

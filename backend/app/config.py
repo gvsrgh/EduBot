@@ -71,3 +71,4 @@ DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "")
 # Qdrant Vector Database
 QDRANT_URL = os.getenv("QDRANT_URL", "")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "edubot_documents")

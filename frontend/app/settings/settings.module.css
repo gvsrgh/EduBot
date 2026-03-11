@@ -1685,8 +1685,31 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  max-height: 400px;
+}
+
+.scraperHistoryScrollable {
+  max-height: 360px;
   overflow-y: auto;
+  padding-right: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+}
+
+.scraperHistoryScrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scraperHistoryScrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scraperHistoryScrollable::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 4px;
+}
+
+.scraperHistoryScrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .scraperRunCard {

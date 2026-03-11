@@ -26,9 +26,9 @@ from fastembed import TextEmbedding
 
 
 # ── Configuration ──────────────────────────────────────────────
-from app.config import QDRANT_URL, QDRANT_API_KEY
+from app.config import QDRANT_URL, QDRANT_API_KEY, QDRANT_COLLECTION
 
-COLLECTION_NAME = "edubot_documents"
+COLLECTION_NAME = QDRANT_COLLECTION
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384  # Dimension of all-MiniLM-L6-v2
 CHUNK_SIZE = 800     # ~800 characters per chunk

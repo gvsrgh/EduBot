@@ -82,6 +82,10 @@ _ADMINISTRATIVE_PATTERNS: List[str] = [
 ]
 
 _EDUCATIONAL_PATTERNS: List[str] = [
+    r"\bcse\b", r"\bcomputer\s*science\b", r"\bengineering\b",
+    r"\bdepartment\s*of\s*computer\s*science\b",
+    r"\bfaculty\b", r"\bfaculty\s*achievement[s]?\b",
+    r"\bscraped\b", r"\bknowledge\s*base\b",
     r"\bsyllabi?\b", r"\bsyllabus\b", r"\bcurriculum\b",
     r"\bstudy\s*(?:guide|material)[s]?\b",
     r"\btext\s*book[s]?\b", r"\breference[s]?\b",

@@ -196,6 +196,7 @@ class PageResult:
     filename: str = ""
     text_length: int = 0
     chunks: int = 0
+    vector_ids: list[str] = field(default_factory=list)
     error: str = ""
 
 
@@ -260,9 +261,10 @@ async def run_scrape(
 
                 # Index in Qdrant
                 chunk_count = 0
+                vector_ids: list[str] = []
                 try:
                     from app.vector_store import index_document
-                    chunk_count, _ = index_document(text, filename, category)
+                    chunk_count, vector_ids = index_document(text, filename, category)
                 except Exception as vec_err:
                     pr.error = f"Vector indexing warning: {vec_err}"
 
@@ -271,6 +273,7 @@ async def run_scrape(
                 pr.filename = filename
                 pr.text_length = len(text)
                 pr.chunks = chunk_count
+                pr.vector_ids = vector_ids
 
             except httpx.HTTPStatusError as e:
                 pr.error = f"HTTP {e.response.status_code}"
