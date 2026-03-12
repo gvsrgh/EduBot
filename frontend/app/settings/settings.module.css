@@ -127,6 +127,27 @@
   padding: var(--spacing-2xl);
   backdrop-filter: blur(10px);
   min-height: 400px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+}
+
+.tabContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tabContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabContent::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+
+.tabContent::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .form {
@@ -863,6 +884,7 @@
   flex-direction: column;
   gap: var(--spacing-md);
   height: 100%;
+  padding-bottom: var(--spacing-lg);
 }
 
 .kbHeader {
@@ -979,11 +1001,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  max-height: 480px;
-  overflow-y: auto;
   padding-right: var(--spacing-xs);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-medium) transparent;
 }
 
 .kbFileList::-webkit-scrollbar {
@@ -1002,7 +1020,6 @@
 .kbFileList::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
-
 /* File Card Wrapper (holds header + expanded content) */
 .kbFileCard {
   background: var(--bg-secondary);
@@ -1477,6 +1494,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
 }
 
 .scraperHeader {
@@ -1602,8 +1620,6 @@
   background: var(--border-light);
   border-radius: var(--radius-md);
   overflow: hidden;
-  max-height: 320px;
-  overflow-y: auto;
 }
 
 .scraperUrlRow {
@@ -1685,14 +1701,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
 }
 
 .scraperHistoryScrollable {
-  max-height: 360px;
-  overflow-y: auto;
   padding-right: 0.25rem;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-medium) transparent;
 }
 
 .scraperHistoryScrollable::-webkit-scrollbar {
@@ -1797,6 +1810,37 @@
     align-items: flex-start;
     gap: 0.1rem;
   }
+}
+
+/* Scraper Search Bar */
+.scraperSearchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.scraperSearchInput {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  padding-left: 2.5rem;
+  padding-right: 2.2rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: all var(--transition-fast);
+}
+
+.scraperSearchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.scraperSearchInput:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: var(--bg-hover);
 }
 
 @media (max-width: 520px) {
