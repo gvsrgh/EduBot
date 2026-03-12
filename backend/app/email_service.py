@@ -27,6 +27,9 @@ def _get_sync_session():
     elif url.startswith("postgresql+psycopg2://"):
         url = url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
 
+    # Strip query parameters (e.g. ?sslmode=require) — SSL is managed via connect_args
+    url = url.split('?')[0]
+
     connect_args = {}
     if os.getenv("DATABASE_SSL", "true").lower() != "false":
         verify_ssl = os.getenv("DATABASE_SSL_VERIFY", "false").lower() != "false"

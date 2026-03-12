@@ -4,8 +4,11 @@ EduBot+ Backend - Multi-Model AI Chatbot
 Main FastAPI application with LangGraph agent workflow.
 """
 
-from fastapi import FastAPI
+import traceback
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -134,6 +137,16 @@ app.add_middleware(
 app.include_router(auth_router.router, prefix="/api")
 app.include_router(chat_router.router, prefix="/api")
 app.include_router(settings_router.router, prefix="/api")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled exceptions, log traceback, and return JSON 500."""
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "error": str(exc)},
+    )
 
 
 @app.get("/")

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
+import asyncio
 import uuid
 from app.db.database import get_session
 from app.db.models import User
@@ -157,7 +158,7 @@ async def send_otp(
     
     # Send OTP email (password is hashed before storing with OTP)
     hashed_pw = hash_password(data.password)
-    sent = send_otp_email(data.email, data.username, hashed_pw)
+    sent = await asyncio.to_thread(send_otp_email, data.email, data.username, hashed_pw)
     
     if not sent:
         raise HTTPException(
@@ -267,7 +268,7 @@ async def forgot_password(
         )
     
     # Send password reset OTP
-    sent = send_password_reset_otp_email(data.email, user.username)
+    sent = await asyncio.to_thread(send_password_reset_otp_email, data.email, user.username)
     
     if not sent:
         raise HTTPException(
