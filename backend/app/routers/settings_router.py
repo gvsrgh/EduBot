@@ -188,6 +188,14 @@ async def get_provider_settings(
     )
 
 
+
+@router.get("/provider/defaults")
+async def get_provider_defaults(
+    current_user: dict = Depends(get_current_user),
+):
+    """Expose which provider defaults are configured server-side."""
+    return llm_provider.get_env_defaults()
+
 @router.put("/provider", response_model=ProviderResponse)
 async def update_provider_settings(
     provider_data: ProviderUpdate,
@@ -307,7 +315,6 @@ async def upload_file(
     
     Supported formats: TXT, PDF, DOCX.
     PDF and DOCX files are automatically converted to plain text.
-    Scanned PDFs are processed with OCR (Tesseract) when available.
     
     Creates a Document record in PostgreSQL alongside the file and
     Qdrant vector index (Paper §3.4 — Automatic Document Indexing).
@@ -400,9 +407,6 @@ async def upload_file(
         print(f"Warning: Could not write '{output_filename}' to disk (read-only FS)")
     
     try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(extracted_text)
-        
         original_ext = Path(safe_filename).suffix.lower()
         converted_note = ""
         if original_ext != '.txt':

@@ -161,7 +161,7 @@ def get_otp_email_template(otp: str, username: str) -> str:
           <tr>
             <td style="padding: 24px 40px; background-color: #f8fafc; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="margin: 0 0 8px 0; font-size: 14px; color: #718096;">
-                Need help? Contact us at <a href="mailto:gvsrytchannel@gmail.com" style="color: #667eea; text-decoration: none;">support@edubot.com</a>
+                Need help? Contact us at <a href="mailto:22501a0557@pvpsit.ac.in" style="color: #667eea; text-decoration: none;">22501a0557@pvpsit.ac.in</a>
               </p>
               <p style="margin: 0; font-size: 12px; color: #a0aec0;">
                 © {current_year} EduBot+. All rights reserved.
@@ -283,7 +283,7 @@ def get_welcome_email_template(username: str, email: str) -> str:
           <tr>
             <td style="padding: 24px 40px; background-color: #f8fafc; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="margin: 0 0 8px 0; font-size: 14px; color: #718096;">
-                Need assistance? We're here to help at <a href="mailto:support@edubot.com" style="color: #667eea; text-decoration: none;">support@edubot.com</a>
+                Need assistance? We're here to help at <a href="mailto:22501a0557@pvpsit.ac.in" style="color: #667eea; text-decoration: none;">22501a0557@pvpsit.ac.in</a>
               </p>
               <p style="margin: 0; font-size: 12px; color: #a0aec0;">
                 © {current_year} EduBot+. All rights reserved.
@@ -411,7 +411,7 @@ def get_password_reset_email_template(otp: str, username: str) -> str:
           <tr>
             <td style="padding: 24px 40px; background-color: #f8fafc; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="margin: 0 0 8px 0; font-size: 14px; color: #718096;">
-                Need help? Contact us at <a href="mailto:gvsrytchannel@gmail.com" style="color: #e74c3c; text-decoration: none;">support@edubot.com</a>
+                Need help? Contact us at <a href="mailto:22501a0557@pvpsit.ac.in" style="color: #e74c3c; text-decoration: none;">22501a0557@pvpsit.ac.in</a>
               </p>
               <p style="margin: 0; font-size: 12px; color: #a0aec0;">
                 © {current_year} EduBot+. All rights reserved.
@@ -445,3 +445,4 @@ def send_password_reset_otp_email(email: str, username: str) -> bool:
     
     html_content = get_password_reset_email_template(otp, username)
     return send_email(email, "🔑 Reset Your Password - EduBot+", html_content)
+

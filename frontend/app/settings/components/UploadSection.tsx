@@ -288,7 +288,7 @@ export default function UploadSection() {
           <li><strong>Educational:</strong> Course materials, syllabi, study guides, resources</li>
           <li>Supports <strong>PDF</strong>, <strong>DOCX</strong>, and <strong>TXT</strong> files</li>
           <li>PDF and DOCX files are automatically converted to text for the knowledge base</li>
-          <li>Scanned PDFs are processed with OCR when Tesseract is available</li>
+          <li>Scanned PDFs need selectable text to be indexed correctly</li>
           <li>Maximum file size: 10MB per file</li>
           <li>Content will be available for all users in your organization</li>
         </ul>
@@ -296,3 +296,4 @@ export default function UploadSection() {
     </div>
   );
 }
+
