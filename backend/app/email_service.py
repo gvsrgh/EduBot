@@ -20,8 +20,6 @@ def _get_sync_session():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from app.config import DATABASE_URL_SYNC
-    import ssl as _ssl
-
     # Ensure the URL uses the psycopg (v3) dialect, not psycopg2
     url = DATABASE_URL_SYNC
     if url.startswith("postgresql://"):
@@ -31,12 +29,16 @@ def _get_sync_session():
 
     connect_args = {}
     if os.getenv("DATABASE_SSL", "true").lower() != "false":
-        ssl_context = _ssl.create_default_context()
-        if os.getenv("DATABASE_SSL_VERIFY", "false").lower() == "false":
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = _ssl.CERT_NONE
-        connect_args["sslmode"] = "verify-full"
-        connect_args["ssl_context"] = ssl_context
+        verify_ssl = os.getenv("DATABASE_SSL_VERIFY", "false").lower() != "false"
+        # psycopg accepts libpq-style SSL options. Use require by default for
+        # Cloud SQL public IP connections and only enforce hostname checks when
+        # explicit verification is enabled.
+        connect_args["sslmode"] = "verify-full" if verify_ssl else "require"
+
+        if verify_ssl:
+            ssl_root_cert = os.getenv("DATABASE_SSL_ROOT_CERT")
+            if ssl_root_cert:
+                connect_args["sslrootcert"] = ssl_root_cert
 
     eng = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
     Session = sessionmaker(bind=eng)
@@ -340,16 +342,24 @@ def store_otp(email: str, otp: str, username: str, hashed_password: str) -> None
 
 def verify_otp(email: str, otp: str) -> Optional[dict]:
     """Verify registration OTP. Returns stored data if valid."""
-    return _verify_otp_db(email, otp, purpose="registration")
+    try:
+        return _verify_otp_db(email, otp, purpose="registration")
+    except Exception as e:
+        print(f"Error verifying registration OTP: {e}")
+        return None
 
 
 def send_otp_email(email: str, username: str, hashed_password: str) -> bool:
     """Generate, store and send OTP email."""
-    otp = generate_otp()
-    store_otp(email, otp, username, hashed_password)
-    
-    html_content = get_otp_email_template(otp, username)
-    return send_email(email, "🔐 Verify Your Email - EduBot+", html_content)
+    try:
+        otp = generate_otp()
+        store_otp(email, otp, username, hashed_password)
+
+        html_content = get_otp_email_template(otp, username)
+        return send_email(email, "🔐 Verify Your Email - EduBot+", html_content)
+    except Exception as e:
+        print(f"Error generating/storing registration OTP: {e}")
+        return False
 
 
 def send_welcome_email(email: str, username: str) -> bool:
@@ -438,14 +448,22 @@ def store_password_reset_otp(email: str, otp: str) -> None:
 
 def verify_password_reset_otp(email: str, otp: str) -> bool:
     """Verify password reset OTP. Returns True if valid."""
-    result = _verify_otp_db(email, otp, purpose="password_reset")
-    return result is not None
+    try:
+        result = _verify_otp_db(email, otp, purpose="password_reset")
+        return result is not None
+    except Exception as e:
+        print(f"Error verifying password reset OTP: {e}")
+        return False
 
 
 def send_password_reset_otp_email(email: str, username: str) -> bool:
     """Generate, store and send password reset OTP email."""
-    otp = generate_otp()
-    store_password_reset_otp(email, otp)
-    
-    html_content = get_password_reset_email_template(otp, username)
-    return send_email(email, "🔑 Reset Your Password - EduBot+", html_content)
+    try:
+        otp = generate_otp()
+        store_password_reset_otp(email, otp)
+
+        html_content = get_password_reset_email_template(otp, username)
+        return send_email(email, "🔑 Reset Your Password - EduBot+", html_content)
+    except Exception as e:
+        print(f"Error generating/storing password reset OTP: {e}")
+        return False
