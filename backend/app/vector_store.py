@@ -136,6 +136,26 @@ def chunk_text(
     return chunks
 
 
+# ── Filename Context ───────────────────────────────────────────
+def _filename_to_context(filename: str) -> str:
+    """Convert a filename into a human-readable context prefix.
+
+    Example:
+        'scraped_pvpsiddhartha_feestructure.txt'
+        → 'Document: scraped pvpsiddhartha feestructure'
+
+    This prefix is prepended to chunk text *before* embedding so that
+    filename semantics (e.g. 'fee', 'admission', 'hostel') are captured
+    in the vector representation.
+    """
+    import re as _re
+    stem = filename.rsplit(".", 1)[0]  # drop extension
+    # Replace underscores, hyphens, and camelCase boundaries with spaces
+    readable = _re.sub(r"[_\-]+", " ", stem)
+    readable = _re.sub(r"(?<=[a-z])(?=[A-Z])", " ", readable)
+    return f"Document: {readable.strip()}"
+
+
 # ── Embedding ─────────────────────────────────────────────────
 def embed_texts(texts: List[str]) -> List[List[float]]:
     """Generate embeddings for a list of texts using FastEmbed."""
@@ -169,10 +189,14 @@ def index_document(
     if not chunks:
         return 0, []
 
-    # Generate embeddings
-    embeddings = embed_texts(chunks)
+    # Prepend filename context so filename semantics are captured in embeddings
+    file_context = _filename_to_context(filename)
+    enriched_chunks = [f"{file_context}\n\n{chunk}" for chunk in chunks]
 
-    # Build Qdrant points
+    # Generate embeddings from enriched text (includes filename context)
+    embeddings = embed_texts(enriched_chunks)
+
+    # Build Qdrant points (store original chunk text in payload, not enriched)
     points = []
     point_ids: List[str] = []
     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
@@ -203,6 +227,22 @@ def index_document(
 
 
 # ── Search ────────────────────────────────────────────────────
+def _extract_filename_keywords(query: str) -> List[str]:
+    """Extract meaningful keywords from a query for filename matching."""
+    import re as _re
+    # Normalise and split into words (3+ chars to avoid noise)
+    words = _re.findall(r"[a-zA-Z]{3,}", query.lower())
+    # Remove very common stop-words that would cause false-positive filename hits
+    stop = {
+        "the", "and", "for", "are", "but", "not", "you", "all",
+        "can", "had", "her", "was", "one", "our", "out", "has",
+        "what", "when", "who", "how", "where", "which", "this",
+        "that", "with", "from", "about", "tell", "give", "please",
+        "details", "detail", "info", "information", "know", "want",
+    }
+    return [w for w in words if w not in stop]
+
+
 def search_documents(
     query: str,
     category: Optional[str] = None,
@@ -210,7 +250,15 @@ def search_documents(
     threshold: float = SIMILARITY_THRESHOLD,
 ) -> List[dict]:
     """
-    Semantic search across indexed documents.
+    Semantic search across indexed documents with filename-aware boosting.
+
+    Performs a two-pass search:
+      1. Standard vector similarity search.
+      2. Filename-keyword match — scrolls through stored filenames and
+         retrieves additional chunks from files whose names contain query
+         keywords.  These results are merged (deduplicated) with the
+         vector hits so that relevant files are never missed just because
+         the chunk text didn't match the query embedding.
 
     Args:
         query: The search query text.
@@ -247,10 +295,13 @@ def search_documents(
 
     # Filter by threshold and format
     hits: List[dict] = []
+    seen_keys: set = set()  # (filename, chunk_index) for dedup
     for point in results.points:
         score = point.score
         if score >= threshold:
             payload = point.payload
+            key = (payload.get("filename", ""), payload.get("chunk_index", 0))
+            seen_keys.add(key)
             hits.append(
                 {
                     "text": payload.get("text", ""),
@@ -261,7 +312,65 @@ def search_documents(
                 }
             )
 
-    return hits
+    # ── Pass 2: Filename-keyword boosting ──────────────────────
+    query_keywords = _extract_filename_keywords(query)
+    if query_keywords:
+        # Scroll all unique filenames in the collection (lightweight payload-only scan)
+        try:
+            scroll_filter = search_filter  # respect the category filter
+            all_points, _ = client.scroll(
+                collection_name=COLLECTION_NAME,
+                scroll_filter=scroll_filter,
+                limit=500,
+                with_payload=["filename", "category"],
+                with_vectors=False,
+            )
+            # Identify filenames that contain any query keyword
+            matched_filenames: set = set()
+            for pt in all_points:
+                fname = (pt.payload.get("filename") or "").lower()
+                # Match against the cleaned filename (no extension, underscores → spaces)
+                fname_clean = fname.replace("_", " ").replace("-", " ").rsplit(".", 1)[0]
+                for kw in query_keywords:
+                    if kw in fname_clean:
+                        matched_filenames.add(pt.payload.get("filename", ""))
+                        break
+
+            # For each matched filename, retrieve its chunks via vector search
+            for mf in matched_filenames:
+                fname_filter_conditions = [
+                    FieldCondition(key="filename", match=MatchValue(value=mf)),
+                ]
+                if category:
+                    fname_filter_conditions.append(
+                        FieldCondition(key="category", match=MatchValue(value=category)),
+                    )
+                fname_results = client.query_points(
+                    collection_name=COLLECTION_NAME,
+                    query=query_embedding,
+                    query_filter=Filter(must=fname_filter_conditions),
+                    limit=3,  # top chunks per matched file
+                )
+                for point in fname_results.points:
+                    payload = point.payload
+                    key = (payload.get("filename", ""), payload.get("chunk_index", 0))
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        hits.append(
+                            {
+                                "text": payload.get("text", ""),
+                                "filename": payload.get("filename", ""),
+                                "category": payload.get("category", ""),
+                                "chunk_index": payload.get("chunk_index", 0),
+                                "score": round(point.score, 4),
+                            }
+                        )
+        except Exception as exc:
+            print(f"Filename-keyword boost pass failed (non-fatal): {exc}")
+
+    # Sort all hits by score descending and return top_k
+    hits.sort(key=lambda h: h["score"], reverse=True)
+    return hits[:top_k]
 
 
 # ── Delete ────────────────────────────────────────────────────
