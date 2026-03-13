@@ -264,7 +264,6 @@ export default function ModelSection({
           value={formData.ai_provider}
           onChange={(value) => setFormData({ ...formData, ai_provider: value })}
           options={[
-            { value: 'ollama', label: 'Local Ollama (Recommended)' },
             { value: 'openai', label: 'OpenAI GPT-4' },
             { value: 'gemini', label: 'Google Gemini' },
             { value: 'deepseek', label: 'DeepSeek' },
