@@ -1,6 +1,7 @@
 import { AuthResponse, LoginRequest, RegisterRequest, MessageRequest, MessageResponse, Chat, ChatMessage } from './types';
+import { getApiBase } from './api-base';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://edubot-backend-534287199772.asia-south1.run.app/api';
+const API_BASE = getApiBase();
 
 class ApiClient {
   private token: string | null = null;

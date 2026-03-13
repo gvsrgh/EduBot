@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { getApiBase } from '@/lib/api-base';
 import styles from './settings.module.css';
 import UploadSection from './components/UploadSection';
 import ModelSection from './components/ModelSection';
 import KnowledgeBase from './components/KnowledgeBase';
 import WebScraper from './components/WebScraper';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE = getApiBase();
 
 type TabType = 'upload' | 'kb' | 'model' | 'scraper';
 

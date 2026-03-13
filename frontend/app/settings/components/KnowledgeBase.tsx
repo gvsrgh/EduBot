@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import styles from '../settings.module.css';
+import { getApiBase } from '@/lib/api-base';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE = getApiBase();
 
 interface UploadedFile {
   id?: string;
@@ -17,6 +18,11 @@ interface UploadedFile {
   is_expired?: boolean;
 }
 
+interface FileContentState {
+  content: string;
+  truncated: boolean;
+}
+
 export default function KnowledgeBase() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,8 +32,11 @@ export default function KnowledgeBase() {
   const [expiryInput, setExpiryInput] = useState('');
   const [savingExpiry, setSavingExpiry] = useState<string | null>(null);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
-  const [fileContents, setFileContents] = useState<Record<string, { content: string; truncated: boolean }>>({});
+  const [fileContents, setFileContents] = useState<Record<string, FileContentState>>({});
   const [loadingContent, setLoadingContent] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState<string | null>(null);
+  const [contentDraft, setContentDraft] = useState('');
+  const [savingContent, setSavingContent] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{
     show: boolean;
     success: boolean;
@@ -197,6 +206,7 @@ export default function KnowledgeBase() {
     const key = `${file.category}/${file.filename}`;
     if (expandedFile === key) {
       setExpandedFile(null);
+      setEditingContent(null);
       return;
     }
     setExpandedFile(key);
@@ -224,6 +234,68 @@ export default function KnowledgeBase() {
       setFileContents(prev => ({ ...prev, [key]: { content: 'Failed to load content.', truncated: false } }));
     } finally {
       setLoadingContent(null);
+    }
+  };
+
+  const startEditingContent = (file: UploadedFile) => {
+    const key = `${file.category}/${file.filename}`;
+    const current = fileContents[key]?.content || '';
+    setEditingContent(key);
+    setContentDraft(current);
+  };
+
+  const cancelEditingContent = () => {
+    setEditingContent(null);
+    setContentDraft('');
+  };
+
+  const saveEditedContent = async (file: UploadedFile) => {
+    const key = `${file.category}/${file.filename}`;
+    const nextContent = contentDraft.trim();
+
+    if (!nextContent) {
+      showStatus(false, 'Content cannot be empty');
+      return;
+    }
+
+    setSavingContent(key);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `${API_BASE}/settings/files/${encodeURIComponent(file.category)}/${encodeURIComponent(file.filename)}/content`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ content: nextContent }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setFileContents(prev => ({
+          ...prev,
+          [key]: {
+            content: data.content || nextContent,
+            truncated: Boolean(data.truncated),
+          },
+        }));
+        setEditingContent(null);
+        setContentDraft('');
+        showStatus(true, `Updated "${file.filename}" in Qdrant`);
+        fetchFiles();
+      } else {
+        const error = await response.json();
+        showStatus(false, error.detail || 'Failed to update content');
+      }
+    } catch (error) {
+      showStatus(false, error instanceof Error ? error.message : 'Failed to update content');
+    } finally {
+      setSavingContent(null);
     }
   };
 
@@ -452,7 +524,50 @@ export default function KnowledgeBase() {
                       <div className={styles.kbContentLoading}>Loading content...</div>
                     ) : fileContents[key] ? (
                       <>
-                        <pre className={styles.kbContentPre}>{fileContents[key].content}</pre>
+                        <div className={styles.kbContentActions}>
+                          {editingContent === key ? (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.kbContentSaveBtn}
+                                onClick={() => saveEditedContent(file)}
+                                disabled={savingContent === key}
+                                title="Save changes"
+                              >
+                                {savingContent === key ? '⏳' : 'Save'}
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.kbContentCancelBtn}
+                                onClick={cancelEditingContent}
+                                disabled={savingContent === key}
+                                title="Cancel edit"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className={styles.kbContentEditBtn}
+                              onClick={() => startEditingContent(file)}
+                              title="Edit content"
+                            >
+                              ✏️
+                            </button>
+                          )}
+                        </div>
+
+                        {editingContent === key ? (
+                          <textarea
+                            className={styles.kbContentTextarea}
+                            value={contentDraft}
+                            onChange={(e) => setContentDraft(e.target.value)}
+                            rows={12}
+                          />
+                        ) : (
+                          <pre className={styles.kbContentPre}>{fileContents[key].content}</pre>
+                        )}
                         {fileContents[key].truncated && (
                           <div className={styles.kbContentTruncated}>
                             ⚠️ Content truncated (file too large to display in full)

@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from app.config import CORS_ORIGINS, DEBUG
+from app.config import CORS_ORIGINS, CORS_ORIGIN_REGEX, DEBUG
 from app.db.database import init_db, AsyncSessionLocal, engine
 from app.db.models import Document
 from app.routers import auth_router, chat_router, settings_router
@@ -128,6 +128,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

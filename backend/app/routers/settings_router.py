@@ -11,7 +11,7 @@ from app.db.models import Setting, Document
 from app.schemas import (
     ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate,
     TestConnectionRequest, DocumentResponse, DocumentListResponse,
-    DocumentExpiryUpdate,
+    DocumentExpiryUpdate, DocumentContentUpdate,
     ScraperPageResult, ScraperRunResponse, ScraperConfigResponse,
     ScraperConfigUpdate, ScraperUrlAdd, ScraperUrlRemove,
 )
@@ -543,34 +543,133 @@ async def get_file_content(
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Return the text content of an uploaded knowledge-base file.
-    Limited to 100 KB to avoid oversized responses.
+    Return document content by reconstructing chunks stored in Qdrant.
+    Limited to 100 KB in the response to avoid oversized payloads.
     """
-    category_dirs = {
-        "Academic": ACADEMIC_DIR,
-        "Administrative": ADMINISTRATIVE_DIR,
-        "Educational": EDUCATIONAL_DIR,
-    }
-    base_dir = category_dirs.get(category)
-    if not base_dir:
+    valid_categories = {"Academic", "Administrative", "Educational"}
+    if category not in valid_categories:
         raise HTTPException(status_code=400, detail="Invalid category")
 
-    # Resolve and ensure the path stays inside the category directory
-    file_path = (base_dir / filename).resolve()
-    if not str(file_path).startswith(str(base_dir.resolve())):
+    safe_filename = Path(filename).name
+    if not safe_filename or safe_filename.startswith('.') or '/' in filename or '\\' in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        from app.vector_store import get_qdrant_client, COLLECTION_NAME
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+        client = get_qdrant_client()
+        q_filter = Filter(
+            must=[
+                FieldCondition(key="filename", match=MatchValue(value=safe_filename)),
+                FieldCondition(key="category", match=MatchValue(value=category)),
+            ]
+        )
+
+        points = []
+        next_offset = None
+        while True:
+            batch, next_offset = client.scroll(
+                collection_name=COLLECTION_NAME,
+                scroll_filter=q_filter,
+                limit=256,
+                with_payload=["text", "chunk_index"],
+                with_vectors=False,
+                offset=next_offset,
+            )
+            if batch:
+                points.extend(batch)
+            if next_offset is None:
+                break
+
+        if not points:
+            raise HTTPException(status_code=404, detail="Document content not found in Qdrant")
+
+        points.sort(key=lambda p: int((p.payload or {}).get("chunk_index", 0)))
+        full_text = "\n\n".join(str((p.payload or {}).get("text", "")) for p in points).strip()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading content from Qdrant: {str(e)}")
 
     MAX_CONTENT = 100 * 1024  # 100 KB
+    truncated = len(full_text) > MAX_CONTENT
+    content = full_text[:MAX_CONTENT]
+    return {"content": content, "truncated": truncated}
+
+
+@router.patch("/files/{category}/{filename}/content")
+async def update_file_content(
+    category: str,
+    filename: str,
+    body: DocumentContentUpdate,
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Update a document's text directly in Qdrant by re-indexing its chunks.
+
+    This intentionally avoids filesystem persistence so Cloud Run storage is
+    not required for content updates.
+    """
+    user_email = current_user.get("email", "")
+    if user_email.endswith(RESTRICTED_EMAIL_DOMAIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Content editing is not allowed for restricted-domain users",
+        )
+
+    valid_categories = {"Academic", "Administrative", "Educational"}
+    if category not in valid_categories:
+        raise HTTPException(status_code=400, detail="Invalid category")
+
+    safe_filename = Path(filename).name
+    if not safe_filename or safe_filename.startswith('.') or '/' in filename or '\\' in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    text = body.content.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Content cannot be empty")
+
     try:
-        raw = file_path.read_text(encoding="utf-8", errors="replace")
-        truncated = len(raw) > MAX_CONTENT
-        content = raw[:MAX_CONTENT]
-        return {"content": content, "truncated": truncated}
+        from app.vector_store import index_document
+
+        chunk_count, vector_ids = index_document(text, safe_filename, category)
+
+        # Keep metadata in sync when a DB record exists.
+        result = await session.execute(
+            select(Document).where(
+                and_(
+                    Document.filename == safe_filename,
+                    Document.category == category,
+                )
+            )
+        )
+        doc = result.scalar_one_or_none()
+        if doc:
+            doc.file_size = len(text.encode("utf-8"))
+            doc.chunk_count = chunk_count
+            doc.vector_ids = vector_ids
+            doc.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+
+        return {
+            "success": True,
+            "message": f"Updated '{safe_filename}' in Qdrant",
+            "filename": safe_filename,
+            "category": category,
+            "chunk_count": chunk_count,
+            "content": text,
+            "truncated": False,
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating document content: {str(e)}",
+        )
 
 
 @router.delete("/files/{category}/{filename}")

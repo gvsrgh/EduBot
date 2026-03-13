@@ -229,6 +229,11 @@ class DocumentExpiryUpdate(BaseModel):
     expiry_date: Optional[datetime] = None  # None = remove expiry (never expires)
 
 
+class DocumentContentUpdate(BaseModel):
+    """Request schema for editing knowledge-base document content."""
+    content: str = Field(..., min_length=1)
+
+
 # ── Web Scraper Schemas ────────────────────────────────────────────
 
 class ScraperPageResult(BaseModel):

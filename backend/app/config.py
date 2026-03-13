@@ -37,7 +37,23 @@ JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRY = int(os.getenv("JWT_EXPIRY", "30"))  # days
 
 # Application Settings
-CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",") if o.strip()]
+_raw_cors_origins = [
+    o.strip()
+    for o in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:3001,http://localhost:5173",
+    ).split(",")
+    if o.strip()
+]
+
+# Always keep known first-party frontends enabled, even if CORS_ORIGINS is stale.
+_default_frontend_origins = [
+    "https://bot.gvsr.dev",
+    "https://www.bot.gvsr.dev",
+]
+
+CORS_ORIGINS = list(dict.fromkeys(_raw_cors_origins + _default_frontend_origins))
+CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", r"^https://.*\\.vercel\\.app$")
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Data Files

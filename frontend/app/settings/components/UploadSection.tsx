@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import styles from '../settings.module.css';
 import CustomSelect from '../../components/CustomSelect';
+import { getApiBase } from '@/lib/api-base';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE = getApiBase();
 
 type FileCategory = 'Academic' | 'Administrative' | 'Educational';
 
