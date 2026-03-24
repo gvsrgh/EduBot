@@ -11,7 +11,7 @@ from app.db.models import Setting, Document
 from app.schemas import (
     ProviderUpdate, ProviderResponse, SettingsResponse, SettingsUpdate,
     TestConnectionRequest, DocumentResponse, DocumentListResponse,
-    DocumentExpiryUpdate, DocumentContentUpdate,
+    DocumentExpiryUpdate, DocumentContentUpdate, DocumentCategoryUpdate,
     ScraperPageResult, ScraperRunResponse, ScraperConfigResponse,
     ScraperConfigUpdate, ScraperUrlAdd, ScraperUrlRemove,
 )
@@ -669,6 +669,123 @@ async def update_file_content(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating document content: {str(e)}",
+        )
+
+
+@router.patch("/files/{document_id}/category")
+async def update_document_category(
+    document_id: str,
+    body: DocumentCategoryUpdate,
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Change a document's category (Academic / Administrative / Educational).
+
+    Re-indexes vectors in Qdrant with the new category and moves the file
+    on disk if it exists.
+    """
+    user_email = current_user.get("email", "")
+    if user_email.endswith(RESTRICTED_EMAIL_DOMAIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Category editing is not allowed for restricted-domain users",
+        )
+
+    valid_categories = {"Academic", "Administrative", "Educational"}
+    new_category = body.category
+    if new_category not in valid_categories:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}",
+        )
+
+    result = await session.execute(
+        select(Document).where(Document.id == document_id)
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    old_category = doc.category
+    if old_category == new_category:
+        return {
+            "success": True,
+            "message": "Category unchanged",
+            "filename": doc.filename,
+            "category": new_category,
+        }
+
+    try:
+        # 1. Re-index vectors in Qdrant with new category
+        from app.vector_store import get_qdrant_client, COLLECTION_NAME, delete_document, index_document
+
+        # Reconstruct full text from existing Qdrant chunks
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+        client = get_qdrant_client()
+        q_filter = Filter(
+            must=[
+                FieldCondition(key="filename", match=MatchValue(value=doc.filename)),
+                FieldCondition(key="category", match=MatchValue(value=old_category)),
+            ]
+        )
+        points, _ = client.scroll(
+            collection_name=COLLECTION_NAME,
+            scroll_filter=q_filter,
+            limit=500,
+            with_payload=["text", "chunk_index"],
+            with_vectors=False,
+        )
+        points.sort(key=lambda p: int((p.payload or {}).get("chunk_index", 0)))
+        full_text = "\n\n".join(
+            str((p.payload or {}).get("text", "")) for p in points
+        ).strip()
+
+        if not full_text:
+            raise HTTPException(
+                status_code=404, detail="No vector content found for this document"
+            )
+
+        # Delete old vectors and re-index with new category
+        delete_document(doc.filename, old_category)
+        chunk_count, vector_ids = index_document(full_text, doc.filename, new_category)
+
+        # 2. Move file on disk if it exists
+        category_dirs = {
+            "Academic": ACADEMIC_DIR,
+            "Administrative": ADMINISTRATIVE_DIR,
+            "Educational": EDUCATIONAL_DIR,
+        }
+        old_path = category_dirs[old_category] / doc.filename
+        new_dir = category_dirs[new_category]
+        if old_path.exists():
+            new_dir.mkdir(parents=True, exist_ok=True)
+            new_path = new_dir / doc.filename
+            old_path.rename(new_path)
+
+        # 3. Update DB record
+        doc.category = new_category
+        doc.chunk_count = chunk_count
+        doc.vector_ids = vector_ids
+        doc.updated_at = datetime.now(timezone.utc)
+        await session.commit()
+
+        return {
+            "success": True,
+            "message": f"Category changed from {old_category} to {new_category}",
+            "filename": doc.filename,
+            "old_category": old_category,
+            "category": new_category,
+            "chunk_count": chunk_count,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating category: {str(e)}",
         )
 
 

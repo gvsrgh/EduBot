@@ -37,6 +37,9 @@ export default function KnowledgeBase() {
   const [editingContent, setEditingContent] = useState<string | null>(null);
   const [contentDraft, setContentDraft] = useState('');
   const [savingContent, setSavingContent] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [categoryDraft, setCategoryDraft] = useState('');
+  const [savingCategory, setSavingCategory] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{
     show: boolean;
     success: boolean;
@@ -299,6 +302,57 @@ export default function KnowledgeBase() {
     }
   };
 
+  const handleEditCategory = (file: UploadedFile) => {
+    const fileKey = file.id || `${file.category}/${file.filename}`;
+    if (editingCategory === fileKey) {
+      setEditingCategory(null);
+      return;
+    }
+    setEditingCategory(fileKey);
+    setCategoryDraft(file.category);
+  };
+
+  const saveCategory = async (file: UploadedFile) => {
+    if (!file.id) {
+      showStatus(false, 'Cannot change category on legacy files without DB record');
+      return;
+    }
+    if (categoryDraft === file.category) {
+      setEditingCategory(null);
+      return;
+    }
+    setSavingCategory(file.id);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(`${API_BASE}/settings/files/${file.id}/category`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ category: categoryDraft }),
+      });
+
+      if (response.ok) {
+        showStatus(true, `Category changed to ${categoryDraft} for "${file.filename}"`);
+        setEditingCategory(null);
+        // Clear cached content since category key changed
+        setExpandedFile(null);
+        setFileContents({});
+        fetchFiles();
+      } else {
+        const error = await response.json();
+        showStatus(false, error.detail || 'Failed to update category');
+      }
+    } catch (error) {
+      showStatus(false, error instanceof Error ? error.message : 'Failed to update category');
+    } finally {
+      setSavingCategory(null);
+    }
+  };
+
   const showStatus = (success: boolean, message: string) => {
     setStatusMessage({ show: true, success, message });
     setTimeout(() => setStatusMessage({ show: false, success: false, message: '' }), 3000);
@@ -422,6 +476,7 @@ export default function KnowledgeBase() {
             const fileKey = file.id || key;
             const expiryLabel = getExpiryLabel(file);
             const isEditing = editingExpiry === fileKey;
+            const isEditingCat = editingCategory === fileKey;
 
             return (
               <div
@@ -488,7 +543,50 @@ export default function KnowledgeBase() {
                         )}
                       </div>
                     )}
+
+                    {/* Inline Category Editor */}
+                    {isEditingCat && (
+                      <div className={styles.kbExpiryEditor} onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={categoryDraft}
+                          onChange={(e) => setCategoryDraft(e.target.value)}
+                          className={styles.kbCategorySelect}
+                        >
+                          <option value="Academic">Academic</option>
+                          <option value="Administrative">Administrative</option>
+                          <option value="Educational">Educational</option>
+                        </select>
+                        <button
+                          onClick={() => saveCategory(file)}
+                          disabled={savingCategory === file.id}
+                          className={styles.kbExpirySave}
+                          title="Save category"
+                        >
+                          {savingCategory === file.id ? '⏳' : '✓'}
+                        </button>
+                        <button
+                          onClick={() => setEditingCategory(null)}
+                          disabled={savingCategory === file.id}
+                          className={styles.kbExpiryRemove}
+                          title="Cancel"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Category edit button */}
+                  {file.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleEditCategory(file); }}
+                      className={`${styles.kbExpiryBtn} ${isEditingCat ? styles.kbExpiryBtnActive : ''}`}
+                      title={isEditingCat ? 'Close category editor' : 'Change category'}
+                    >
+                      🏷️
+                    </button>
+                  )}
 
                   {/* Expiry toggle button */}
                   {file.id && (

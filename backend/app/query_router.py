@@ -63,7 +63,7 @@ _ADMINISTRATIVE_PATTERNS: List[str] = [
     r"\bplacement[s]?\b", r"\bcareer\b", r"\binternship[s]?\b",
     r"\blab(?:oratory|oratories)?\b", r"\binfrastructure\b",
     r"\bprogram(?:me)?[s]?\b", r"\bcourse[s]?\b", r"\bbranch(?:es)?\b",
-    r"\bnaac\b", r"\bnba\b", r"\baccreditation\b",
+    r"\bnaac\b", r"\bnba\b", r"\baccreditation\b", r"\bnirf\b", r"\brank(?:ing|s)?\b",
     r"\bragging\b", r"\bdisciplin(?:e|ary)\b",
     r"\bprincipal\b", r"\bdean\b", r"\bhod\b",
     r"\buniversity\b", r"\bjntuk\b", r"\bpvpsit\b",
@@ -137,6 +137,9 @@ class RoutingResult:
         names: list[str] = []
         for d in self.domains:
             names.extend(mapping[d])
+        # Always include cross-domain search as a fallback
+        if "search_all_domains" not in names:
+            names.append("search_all_domains")
         return names
 
 

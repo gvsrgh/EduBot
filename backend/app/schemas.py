@@ -234,6 +234,11 @@ class DocumentContentUpdate(BaseModel):
     content: str = Field(..., min_length=1)
 
 
+class DocumentCategoryUpdate(BaseModel):
+    """Request schema for changing a document's category."""
+    category: str = Field(..., min_length=1)
+
+
 # ── Web Scraper Schemas ────────────────────────────────────────────
 
 class ScraperPageResult(BaseModel):

@@ -316,11 +316,12 @@ def search_documents(
     query_keywords = _extract_filename_keywords(query)
     if query_keywords:
         # Scroll all unique filenames in the collection (lightweight payload-only scan)
+        # NOTE: intentionally ignore category filter here so filename matches
+        # from other categories are also discovered.
         try:
-            scroll_filter = search_filter  # respect the category filter
             all_points, _ = client.scroll(
                 collection_name=COLLECTION_NAME,
-                scroll_filter=scroll_filter,
+                scroll_filter=None,
                 limit=500,
                 with_payload=["filename", "category"],
                 with_vectors=False,
@@ -337,14 +338,11 @@ def search_documents(
                         break
 
             # For each matched filename, retrieve its chunks via vector search
+            # No category filter — we already matched by filename
             for mf in matched_filenames:
                 fname_filter_conditions = [
                     FieldCondition(key="filename", match=MatchValue(value=mf)),
                 ]
-                if category:
-                    fname_filter_conditions.append(
-                        FieldCondition(key="category", match=MatchValue(value=category)),
-                    )
                 fname_results = client.query_points(
                     collection_name=COLLECTION_NAME,
                     query=query_embedding,
@@ -367,6 +365,38 @@ def search_documents(
                         )
         except Exception as exc:
             print(f"Filename-keyword boost pass failed (non-fatal): {exc}")
+
+    # ── Pass 3: Cross-category fallback ─────────────────────────
+    # Always search without category filter when a category was specified.
+    # This catches relevant docs stored under a different category.
+    # Results are merged and the final sort+trim to top_k ensures only
+    # the best chunks survive.
+    if category:
+        try:
+            cross_results = client.query_points(
+                collection_name=COLLECTION_NAME,
+                query=query_embedding,
+                query_filter=None,  # No category filter
+                limit=top_k,
+            )
+            for point in cross_results.points:
+                score = point.score
+                if score >= threshold:
+                    payload = point.payload
+                    key = (payload.get("filename", ""), payload.get("chunk_index", 0))
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        hits.append(
+                            {
+                                "text": payload.get("text", ""),
+                                "filename": payload.get("filename", ""),
+                                "category": payload.get("category", ""),
+                                "chunk_index": payload.get("chunk_index", 0),
+                                "score": round(score, 4),
+                            }
+                        )
+        except Exception as exc:
+            print(f"Cross-category fallback failed (non-fatal): {exc}")
 
     # Sort all hits by score descending and return top_k
     hits.sort(key=lambda h: h["score"], reverse=True)

@@ -1420,6 +1420,23 @@
   cursor: not-allowed;
 }
 
+/* Category select dropdown (inline editor) */
+.kbCategorySelect {
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 0.3rem;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.kbCategorySelect:focus {
+  border-color: var(--primary-color);
+  outline: none;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .navbar {
