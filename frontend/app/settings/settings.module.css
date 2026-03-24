@@ -1423,13 +1423,19 @@
 /* Category select dropdown (inline editor) */
 .kbCategorySelect {
   padding: 0.25rem 0.5rem;
-  background: var(--bg-secondary);
+  background: #1a1a2e;
   border: 1px solid var(--border-light);
   border-radius: 0.3rem;
   color: var(--text-primary);
   font-size: 0.75rem;
   cursor: pointer;
   transition: border-color var(--transition-fast);
+}
+
+.kbCategorySelect option {
+  background: #1a1a2e;
+  color: var(--text-primary);
+  padding: 0.4rem 0.5rem;
 }
 
 .kbCategorySelect:focus {
