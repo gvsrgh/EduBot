@@ -88,3 +88,15 @@ DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "")
 QDRANT_URL = os.getenv("QDRANT_URL", "")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "edubot_documents")
+
+# ── Widget Configuration ─────────────────────────────────────────────
+WIDGET_RATE_LIMIT_PER_MIN = int(os.getenv("WIDGET_RATE_LIMIT_PER_MIN", "10"))
+WIDGET_RATE_LIMIT_PER_SESSION_MIN = int(os.getenv("WIDGET_RATE_LIMIT_PER_SESSION_MIN", "6"))
+
+# Comma-separated list of origins allowed to embed the widget
+_raw_widget_origins = [
+    o.strip()
+    for o in os.getenv("WIDGET_ALLOWED_ORIGINS", "").split(",")
+    if o.strip()
+]
+WIDGET_ALLOWED_ORIGINS: list[str] = _raw_widget_origins

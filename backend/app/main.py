@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from app.config import CORS_ORIGINS, CORS_ORIGIN_REGEX, DEBUG
 from app.db.database import init_db, AsyncSessionLocal, engine
 from app.db.models import Document
-from app.routers import auth_router, chat_router, settings_router
+from app.routers import auth_router, chat_router, settings_router, widget_router
 
 from sqlalchemy import select, text
 
@@ -138,6 +138,7 @@ app.add_middleware(
 app.include_router(auth_router.router, prefix="/api")
 app.include_router(chat_router.router, prefix="/api")
 app.include_router(settings_router.router, prefix="/api")
+app.include_router(widget_router.router, prefix="/api")
 
 
 @app.exception_handler(Exception)
