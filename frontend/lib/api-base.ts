@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = 'https://edubot-backend-428554105916.asia-south1.run.app/api';
+const DEFAULT_API_BASE = 'https://edubot-backend-702052788878.asia-south1.run.app/api';
 
 const LOCALHOST_API_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i;
 
