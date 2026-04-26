@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { getApiBase } from "../../lib/api-base";
 import styles from "./widget.module.css";
 
@@ -148,7 +149,7 @@ export default function WidgetPage() {
           >
             <div className={styles.messageContent}>
               {msg.role === "assistant" ? (
-                <ReactMarkdown>{formatAssistantText(msg.text)}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{formatAssistantText(msg.text)}</ReactMarkdown>
               ) : (
                 msg.text
               )}

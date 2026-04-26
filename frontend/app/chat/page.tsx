@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, FormEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import styles from './chat.module.css';
@@ -470,7 +471,7 @@ export default function ChatPage() {
                           🔍 {msg.status}
                         </div>
                       )}
-                      <ReactMarkdown>{formatAssistantText(msg.content)}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{formatAssistantText(msg.content)}</ReactMarkdown>
                       {msg.streaming && <span className={styles.streamCursor}>▊</span>}
                     </>
                   ) : (

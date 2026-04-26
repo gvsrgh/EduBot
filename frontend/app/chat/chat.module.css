@@ -532,6 +532,33 @@
   }
 }
 
+/* Table styles */
+.assistantMessage .messageContent table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+  font-size: 0.875rem;
+  overflow-x: auto;
+  display: block;
+}
+
+.assistantMessage .messageContent th,
+.assistantMessage .messageContent td {
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 0.45rem 0.75rem;
+  text-align: left;
+}
+
+.assistantMessage .messageContent th {
+  background: rgba(99, 102, 241, 0.12);
+  font-weight: 600;
+  color: #4f46e5;
+}
+
+.assistantMessage .messageContent tr:nth-child(even) td {
+  background: rgba(99, 102, 241, 0.04);
+}
+
 /* Streaming: blinking cursor */
 .streamCursor {
   display: inline-block;
